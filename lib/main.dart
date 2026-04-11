@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskhub_ai/presentation/state/project_bloc.dart';
+import 'package:taskhub_ai/presentation/state/task_bloc.dart';
 import 'firebase_options.dart';
 import 'core/utils/injection_container.dart' as di;
 import 'presentation/state/auth_bloc.dart';
@@ -33,6 +34,7 @@ class MyApp extends StatelessWidget {
           create: (_) => di.sl<AuthBloc>(),
         ),
         BlocProvider<ProjectBloc>(create: (_) => di.sl<ProjectBloc>()),
+        BlocProvider<TaskBloc>(create: (_) => di.sl<TaskBloc>()),
       ],
       child: MaterialApp(
         title: 'TaskHub AI',

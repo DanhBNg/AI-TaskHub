@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../state/project_bloc.dart';
 import 'create_project_screen.dart';
+import 'kanban_board_screen.dart';
 import 'login_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -90,7 +91,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     subtitle: Text(project.description, maxLines: 1, overflow: TextOverflow.ellipsis),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                     onTap: () {
-                      // Chuyển sang màn hình Kanban (UC-04)
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => KanbanBoardScreen(
+                            projectId: project.projectId,
+                            projectName: project.name,
+                          ),
+                        ),
+                      );
                     },
                   ),
                 );

@@ -12,6 +12,10 @@ import '../../data/repositories/project_repository_impl.dart';
 import '../../domain/repositories/project_repository.dart';
 import '../../presentation/state/project_bloc.dart';
 
+import '../../data/datasources/task_remote_data_source.dart';
+import '../../data/repositories/task_repository_impl.dart';
+import '../../domain/repositories/task_repository.dart';
+import '../../presentation/state/task_bloc.dart';
 final sl = GetIt.instance;
 
 Future<void> init() async {
@@ -43,4 +47,8 @@ Future<void> init() async {
   sl.registerLazySingleton<ProjectRemoteDataSource>(
         () => ProjectRemoteDataSourceImpl(firestore: sl()),
   );
+
+  sl.registerFactory(() => TaskBloc(taskRepository: sl()));
+  sl.registerLazySingleton<TaskRepository>(() => TaskRepositoryImpl(remoteDataSource: sl()));
+  sl.registerLazySingleton<TaskRemoteDataSource>(() => TaskRemoteDataSourceImpl(firestore: sl()));
 }
