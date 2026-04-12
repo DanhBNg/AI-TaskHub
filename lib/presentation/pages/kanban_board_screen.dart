@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:taskhub_ai/presentation/pages/task_detail_sceen.dart';
 import '../../domain/entities/task_entity.dart';
+import '../state/project_bloc.dart';
 import '../state/task_bloc.dart';
 import 'create_task_screen.dart';
 
@@ -23,8 +25,25 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.projectName)),
+    return BlocListener<ProjectBloc, ProjectState>(
+        listener: (context, state) {
+          if (state is ProjectActionSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.green));
+          } else if (state is ProjectError) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.red));
+          }
+        },
+    child:  Scaffold(
+      appBar: AppBar(
+        title: Text(widget.projectName),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person_add_alt_1),
+            tooltip: 'Thêm thành viên',
+            onPressed: () => _showAddMemberDialog(context),
+          )
+        ],
+      ),
       body: BlocBuilder<TaskBloc, TaskState>(
         builder: (context, state) {
           if (state is TaskLoading) return const Center(child: CircularProgressIndicator());
@@ -53,10 +72,50 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
         ),
         child: const Icon(Icons.add),
       ),
+    )
+    );
+  }
+  void _showAddMemberDialog(BuildContext context) {
+    final emailController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Mời thành viên'),
+          content: TextField(
+            controller: emailController,
+            decoration: const InputDecoration(
+              labelText: 'Nhập Email của thành viên',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.email),
+            ),
+            keyboardType: TextInputType.emailAddress,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (emailController.text.trim().isNotEmpty) {
+                  // Gửi sự kiện cho BLoC xử lý
+                  context.read<ProjectBloc>().add(
+                      AddMember(widget.projectId, emailController.text.trim())
+                  );
+                  Navigator.pop(dialogContext); // Đóng hộp thoại
+                }
+              },
+              child: const Text('Thêm'),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  // --- LOGIC KÉO THẢ NẰM Ở ĐÂY ---
+  // kéo th
   Widget _buildKanbanColumn(String status, String title, Color bgColor, List<TaskEntity> allTasks) {
     final columnTasks = allTasks.where((t) => t.status == status).toList();
 
@@ -99,10 +158,20 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
                         opacity: 0.3,
                         child: Card(child: ListTile(title: Text(task.title))),
                       ),
-                      child: Card(
-                        child: ListTile(
-                          title: Text(task.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text(task.description, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => TaskDetailScreen(task: task),
+                            ),
+                          );
+                        },
+                        child: Card(
+                          child: ListTile(
+                            title: Text(task.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text(task.description, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ),
                         ),
                       ),
                     );

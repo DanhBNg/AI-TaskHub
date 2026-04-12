@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:taskhub_ai/presentation/state/invite_bloc.dart';
+import 'package:taskhub_ai/presentation/state/message_bloc.dart';
 import 'package:taskhub_ai/presentation/state/project_bloc.dart';
 import 'package:taskhub_ai/presentation/state/task_bloc.dart';
 import 'firebase_options.dart';
@@ -35,6 +37,8 @@ class MyApp extends StatelessWidget {
         ),
         BlocProvider<ProjectBloc>(create: (_) => di.sl<ProjectBloc>()),
         BlocProvider<TaskBloc>(create: (_) => di.sl<TaskBloc>()),
+        BlocProvider<MessageBloc>(create: (_) => di.sl<MessageBloc>()),
+        BlocProvider<InviteBloc>(create: (_) => di.sl<InviteBloc>()..add(LoadInvites())),
       ],
       child: MaterialApp(
         title: 'TaskHub AI',

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../domain/entities/invite_entity.dart';
+import '../state/invite_bloc.dart';
 import '../state/project_bloc.dart';
 import 'create_project_screen.dart';
 import 'kanban_board_screen.dart';
@@ -30,6 +32,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: const Text('Danh sách Dự án'),
         actions: [
+          BlocBuilder<InviteBloc, InviteState>(
+              builder: (context, state) {
+                int count = 0;
+                if (state is InviteLoaded) count = state.invites.length;
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications),
+                      onPressed: () {
+                        if (count == 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không có thông báo nào')));
+                        } else {
+                          _showInvitesDialog(context, (state as InviteLoaded).invites);
+                        }
+                      },
+                    ),
+                    if (count > 0)
+                      Positioned(
+                        right: 8, top: 8,
+                        child: CircleAvatar(
+                          radius: 8, backgroundColor: Colors.red,
+                          child: Text('$count', style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                      )
+                  ],
+                );
+              }
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
@@ -117,6 +148,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
         child: const Icon(Icons.add),
       ),
+    );
+  }
+  void _showInvitesDialog(BuildContext context, List<InviteEntity> invites) {
+    showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+            title: const Text('Lời mời tham gia dự án'),
+            content: SizedBox(
+                width: double.maxFinite,
+                child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: invites.length,
+                    itemBuilder: (context, index) {
+                      final invite = invites[index];
+                      return ListTile(
+                          title: Text(invite.projectName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text('${invite.senderName} đã mời bạn'),
+                          trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                    icon: const Icon(Icons.check_circle, color: Colors.green, size: 30),
+                                    onPressed: () {
+                                      context.read<InviteBloc>().add(RespondToInvite(invite.inviteId, invite.projectId, true));
+                                      Navigator.pop(ctx);
+                                    }
+                                ),
+                                IconButton(
+                                    icon: const Icon(Icons.cancel, color: Colors.red, size: 30),
+                                    onPressed: () {
+                                      context.read<InviteBloc>().add(RespondToInvite(invite.inviteId, invite.projectId, false));
+                                      Navigator.pop(ctx);
+                                    }
+                                ),
+                              ]
+                          )
+                      );
+                    }
+                )
+            )
+        )
     );
   }
 }

@@ -2,6 +2,8 @@ import '../../domain/entities/project_entity.dart';
 import '../../domain/repositories/project_repository.dart';
 import '../datasources/project_remote_data_source.dart';
 import '../models/project_model.dart';
+import '../../domain/entities/invite_entity.dart';
+
 
 class ProjectRepositoryImpl implements ProjectRepository {
   final ProjectRemoteDataSource remoteDataSource;
@@ -35,5 +37,21 @@ class ProjectRepositoryImpl implements ProjectRepository {
   @override
   Future<void> deleteProject(String projectId) async {
     // Implement later cho chức năng xóa
+  }
+
+  @override
+  Future<void> addMemberByEmail(String projectId, String email) async{
+    await remoteDataSource.addMemberByEmail(projectId, email);
+  }
+
+  @override
+  Stream<List<InviteEntity>> getPendingInvites(String userId) {
+    // Gọi Data Source (nó trả về Model, nhưng vì Model kế thừa Entity nên hợp lệ)
+    return remoteDataSource.getPendingInvites(userId);
+  }
+
+  @override
+  Future<void> respondToInvite(String inviteId, String projectId, String userId, bool isAccept) async {
+    await remoteDataSource.respondToInvite(inviteId, projectId, userId, isAccept);
   }
 }

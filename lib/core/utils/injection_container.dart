@@ -10,12 +10,18 @@ import '../../presentation/state/auth_bloc.dart';
 import '../../data/datasources/project_remote_data_source.dart';
 import '../../data/repositories/project_repository_impl.dart';
 import '../../domain/repositories/project_repository.dart';
+import '../../presentation/state/invite_bloc.dart';
 import '../../presentation/state/project_bloc.dart';
 
 import '../../data/datasources/task_remote_data_source.dart';
 import '../../data/repositories/task_repository_impl.dart';
 import '../../domain/repositories/task_repository.dart';
 import '../../presentation/state/task_bloc.dart';
+
+import '../../data/datasources/message_remote_data_source.dart';
+import '../../data/repositories/message_repository_impl.dart';
+import '../../domain/repositories/message_repository.dart';
+import '../../presentation/state/message_bloc.dart';
 final sl = GetIt.instance;
 
 Future<void> init() async {
@@ -48,7 +54,16 @@ Future<void> init() async {
         () => ProjectRemoteDataSourceImpl(firestore: sl()),
   );
 
+  //TASK
   sl.registerFactory(() => TaskBloc(taskRepository: sl()));
   sl.registerLazySingleton<TaskRepository>(() => TaskRepositoryImpl(remoteDataSource: sl()));
   sl.registerLazySingleton<TaskRemoteDataSource>(() => TaskRemoteDataSourceImpl(firestore: sl()));
+
+  //MESSAGE
+  sl.registerFactory(() => MessageBloc(messageRepository: sl()));
+  sl.registerLazySingleton<MessageRepository>(() => MessageRepositoryImpl(remoteDataSource: sl()));
+  sl.registerLazySingleton<MessageRemoteDataSource>(() => MessageRemoteDataSourceImpl(firestore: sl()));
+
+  //INVITE
+  sl.registerFactory(() => InviteBloc(projectRepository: sl()));
 }

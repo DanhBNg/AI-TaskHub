@@ -19,6 +19,12 @@ class CreateProject extends ProjectEvent {
   CreateProject(this.project);
 }
 
+class AddMember extends ProjectEvent {
+  final String projectId;
+  final String email;
+  AddMember(this.projectId, this.email);
+}
+
 // --- STATES ---
 abstract class ProjectState extends Equatable {
   @override
@@ -39,6 +45,11 @@ class ProjectError extends ProjectState {
   ProjectError(this.message);
   @override
   List<Object> get props => [message];
+}
+
+class ProjectActionSuccess extends ProjectState {
+  final String message;
+  ProjectActionSuccess(this.message);
 }
 
 // --- BLOC ---
@@ -64,6 +75,20 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         // Không cần emit trạng thái mới vì hàm LoadProjects đã lắng nghe Stream (tự động cập nhật)
       } catch (e) {
         emit(ProjectError(e.toString()));
+      }
+    });
+
+    //thêm mem
+    on<AddMember>((event, emit) async {
+      final currentState = state; // 1. Lưu lại trạng thái danh sách dự án hiện tại
+      try {
+        await projectRepository.addMemberByEmail(event.projectId, event.email);
+        emit(ProjectActionSuccess('Đã gửi lời mời thêm thành viên!'));
+      } catch (e) {
+        emit(ProjectError(e.toString().replaceAll('Exception: ', '')));
+      }
+      if (currentState is ProjectLoaded) {
+        emit(currentState);
       }
     });
   }
