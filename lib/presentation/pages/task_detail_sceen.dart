@@ -33,6 +33,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       taskId: widget.task.taskId,
       senderId: currentUser!.uid,
       senderName: currentUser!.displayName ?? currentUser!.email!.split('@')[0],
+      senderAvatarUrl: currentUser!.photoURL,
       content: _chatController.text.trim(),
       timestamp: DateTime.now(),
     );
@@ -51,7 +52,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
       final newMessage = MessageEntity(
         messageId: '', taskId: widget.task.taskId,
-        senderId: currentUser!.uid, senderName: currentUser!.displayName ?? 'User',
+        senderId: currentUser!.uid,
+        senderName: currentUser!.displayName ?? currentUser!.email!.split('@')[0],
+        senderAvatarUrl: currentUser!.photoURL,
         content: 'Đã gửi một hình ảnh', timestamp: DateTime.now(),
       );
 
@@ -107,40 +110,76 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       final msg = state.messages[index];
                       final isMe = msg.senderId == currentUser?.uid;
 
-                      return Align(
-                        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: isMe ? Colors.blueAccent : Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(msg.senderName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.black54)),
-                              const SizedBox(height: 4),
-
-                              if (msg.imageUrl != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.network(
-                                      msg.imageUrl!,
-                                      width: 200,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                )
-                              else
-                                Text(
-                                  msg.content,
-                                  style: TextStyle(color: isMe ? Colors.white : Colors.black87),
-                                ),
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        child: Row(
+                          mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            // NẾU LÀ NGƯỜI KHÁC -> HIỆN AVATAR BÊN TRÁI
+                            if (!isMe) ...[
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundColor: Colors.white,
+                                backgroundImage: msg.senderAvatarUrl != null ? NetworkImage(msg.senderAvatarUrl!) : null,
+                                child: msg.senderAvatarUrl == null
+                                    ? Text(msg.senderName[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent))
+                                    : null,
+                              ),
+                              const SizedBox(width: 8),
                             ],
-                          ),
+
+                            // KHUNG TIN NHẮN (BONG BÓNG)
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: isMe ? Colors.blueAccent : Colors.grey.shade200,
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: const Radius.circular(16),
+                                    topRight: const Radius.circular(16),
+                                    bottomLeft: isMe ? const Radius.circular(16) : Radius.zero,
+                                    bottomRight: isMe ? Radius.zero : const Radius.circular(16),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Tên người gửi (Chỉ hiện nếu không phải là mình)
+                                    if (!isMe) ...[
+                                      Text(msg.senderName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.black54)),
+                                      const SizedBox(height: 4),
+                                    ],
+
+                                    // Nội dung: Ảnh hoặc Chữ
+                                    if (msg.imageUrl != null)
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.network(msg.imageUrl!, width: 200, fit: BoxFit.cover),
+                                      )
+                                    else
+                                      Text(
+                                        msg.content,
+                                        style: TextStyle(color: isMe ? Colors.white : Colors.black87),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // hiện avt chính mình
+                            // if (isMe) ...[
+                            //   const SizedBox(width: 8),
+                            //   CircleAvatar(
+                            //     radius: 16,
+                            //     backgroundColor: Colors.white,
+                            //     backgroundImage: msg.senderAvatarUrl != null ? NetworkImage(msg.senderAvatarUrl!) : null,
+                            //     child: msg.senderAvatarUrl == null
+                            //         ? Text(msg.senderName[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent))
+                            //         : null,
+                            //   ),
+                            // ],
+                          ],
                         ),
                       );
                     },
