@@ -9,6 +9,7 @@ class TaskModel extends TaskEntity {
     super.description,
     super.status,
     super.priority,
+    super.assigneeId, super.assigneeName, super.assigneeAvatarUrl, super.dueDate,
     required super.createdAt,
   });
 
@@ -21,6 +22,10 @@ class TaskModel extends TaskEntity {
       description: data['description'] ?? '',
       status: data['status'] ?? 'todo',
       priority: data['priority'] ?? 'medium',
+      assigneeId: data['assigneeId'],
+      assigneeName: data['assigneeName'],
+      assigneeAvatarUrl: data['assigneeAvatarUrl'],
+      dueDate: data['dueDate'] != null ? (data['dueDate'] as Timestamp).toDate() : null,
       createdAt: data['createdAt'] != null
           ? (data['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
@@ -34,6 +39,10 @@ class TaskModel extends TaskEntity {
       'description': description,
       'status': status,
       'priority': priority,
+      'assigneeId': assigneeId,
+      'assigneeName': assigneeName,
+      'assigneeAvatarUrl': assigneeAvatarUrl,
+      'dueDate': dueDate != null ? Timestamp.fromDate(dueDate!) : null,
       'createdAt': FieldValue.serverTimestamp(),
     };
   }
