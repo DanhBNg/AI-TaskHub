@@ -31,7 +31,9 @@ class MessageRepositoryImpl implements MessageRepository {
     final messageId = DateTime.now().millisecondsSinceEpoch.toString();
     final messageModel = MessageModel(
       messageId: messageId, taskId: message.taskId, senderId: message.senderId,
-      senderName: message.senderName, content: message.content,
+      senderName: message.senderName,
+      senderAvatarUrl: message.senderAvatarUrl,
+      content: message.content,
       imageUrl: uploadedImageUrl, timestamp: message.timestamp,
     );
     await remoteDataSource.sendMessage(messageModel);

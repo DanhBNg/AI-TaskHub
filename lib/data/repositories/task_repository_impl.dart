@@ -37,4 +37,30 @@ class TaskRepositoryImpl implements TaskRepository {
   }
 
   String firestoreId() => DateTime.now().millisecondsSinceEpoch.toString();
+
+  @override
+  Future<void> updateTask(TaskEntity task) async {
+    // Chuyển đổi từ Entity (Logic) sang Model (Data) trước khi gửi đi
+    final taskModel = TaskModel(
+      taskId: task.taskId,
+      projectId: task.projectId,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      priority: task.priority,
+      dueDate: task.dueDate,
+      assigneeId: task.assigneeId,
+      assigneeName: task.assigneeName,
+      assigneeAvatarUrl: task.assigneeAvatarUrl,
+      createdAt: task.createdAt,
+    );
+
+    // Đẩy Model xuống Remote Data Source để cập nhật lên Firestore
+    await remoteDataSource.updateTask(taskModel);
+  }
+
+  @override
+  Future<void> deleteTask(String taskId) async {
+    await remoteDataSource.deleteTask(taskId);
+  }
 }

@@ -16,6 +16,18 @@ class CreateTask extends TaskEvent {
   CreateTask(this.task);
 }
 
+class UpdateTask extends TaskEvent {
+  final TaskEntity task;
+  UpdateTask(this.task);
+  @override List<Object> get props => [task];
+}
+
+class DeleteTask extends TaskEvent {
+  final String taskId;
+  DeleteTask(this.taskId);
+  @override List<Object> get props => [taskId];
+}
+
 class UpdateTaskStatus extends TaskEvent {
   final String taskId;
   final String newStatus;
@@ -57,6 +69,16 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
     on<UpdateTaskStatus>((event, emit) async {
       try { await taskRepository.updateTaskStatus(event.taskId, event.newStatus); }
+      catch (e) { emit(TaskError(e.toString())); }
+    });
+
+    on<UpdateTask>((event, emit) async {
+      try { await taskRepository.updateTask(event.task); }
+      catch (e) { emit(TaskError(e.toString())); }
+    });
+
+    on<DeleteTask>((event, emit) async {
+      try { await taskRepository.deleteTask(event.taskId); }
       catch (e) { emit(TaskError(e.toString())); }
     });
   }

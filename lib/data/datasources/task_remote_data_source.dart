@@ -5,6 +5,8 @@ abstract class TaskRemoteDataSource {
   Stream<List<TaskModel>> getTasksByProject(String projectId);
   Future<void> createTask(TaskModel task);
   Future<void> updateTaskStatus(String taskId, String newStatus);
+  Future<void> updateTask(TaskModel task);
+  Future<void> deleteTask(String taskId);
 }
 
 class TaskRemoteDataSourceImpl implements TaskRemoteDataSource {
@@ -30,5 +32,15 @@ class TaskRemoteDataSourceImpl implements TaskRemoteDataSource {
   @override
   Future<void> updateTaskStatus(String taskId, String newStatus) async {
     await firestore.collection('TASKS').doc(taskId).update({'status': newStatus});
+  }
+
+  @override
+  Future<void> updateTask(TaskModel task) async {
+    await firestore.collection('TASKS').doc(task.taskId).update(task.toJson());
+  }
+
+  @override
+  Future<void> deleteTask(String taskId) async {
+    await firestore.collection('TASKS').doc(taskId).delete();
   }
 }

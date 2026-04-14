@@ -7,6 +7,7 @@ class MessageModel extends MessageEntity {
     required super.taskId,
     required super.senderId,
     required super.senderName,
+    required super.senderAvatarUrl,
     required super.content,
     super.imageUrl,
     required super.timestamp,
@@ -19,6 +20,7 @@ class MessageModel extends MessageEntity {
       taskId: data['taskId'] ?? '',
       senderId: data['senderId'] ?? '',
       senderName: data['senderName'] ?? 'Ẩn danh',
+      senderAvatarUrl: data['senderAvatarUrl'],
       content: data['content'] ?? '',
       imageUrl: data['imageUrl'],
       timestamp: data['timestamp'] != null
@@ -32,6 +34,7 @@ class MessageModel extends MessageEntity {
       'taskId': taskId,
       'senderId': senderId,
       'senderName': senderName,
+      'senderAvatarUrl': senderAvatarUrl,
       'content': content,
       'imageUrl': imageUrl,
       'timestamp': FieldValue.serverTimestamp(),

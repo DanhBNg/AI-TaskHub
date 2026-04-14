@@ -43,7 +43,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       email: email,
       password: password,
     );
-
+    await userCredential.user!.updateDisplayName(fullName);
     // 2. Tạo đối tượng Model để chuẩn bị lưu
     final newUser = UserModel(
       id: userCredential.user!.uid,
