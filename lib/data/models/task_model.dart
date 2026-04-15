@@ -9,8 +9,8 @@ class TaskModel extends TaskEntity {
     super.description,
     super.status,
     super.priority,
-    super.assigneeId, super.assigneeName, super.assigneeAvatarUrl, super.dueDate,
-    required super.createdAt,
+    super.dueDate,
+    required super.createdAt, required super.assigneeIds, required super.assigneeNames, required super.assigneeAvatarUrls,
   });
 
   factory TaskModel.fromFirestore(DocumentSnapshot doc) {
@@ -22,9 +22,9 @@ class TaskModel extends TaskEntity {
       description: data['description'] ?? '',
       status: data['status'] ?? 'todo',
       priority: data['priority'] ?? 'medium',
-      assigneeId: data['assigneeId'],
-      assigneeName: data['assigneeName'],
-      assigneeAvatarUrl: data['assigneeAvatarUrl'],
+      assigneeIds: List<String>.from(data['assigneeIds'] ?? []),
+      assigneeNames: List<String>.from(data['assigneeNames'] ?? []),
+      assigneeAvatarUrls: List<String>.from(data['assigneeAvatarUrls'] ?? []),
       dueDate: data['dueDate'] != null ? (data['dueDate'] as Timestamp).toDate() : null,
       createdAt: data['createdAt'] != null
           ? (data['createdAt'] as Timestamp).toDate()
@@ -39,9 +39,9 @@ class TaskModel extends TaskEntity {
       'description': description,
       'status': status,
       'priority': priority,
-      'assigneeId': assigneeId,
-      'assigneeName': assigneeName,
-      'assigneeAvatarUrl': assigneeAvatarUrl,
+      'assigneeIds': assigneeIds,
+      'assigneeNames': assigneeNames,
+      'assigneeAvatarUrls': assigneeAvatarUrls,
       'dueDate': dueDate != null ? Timestamp.fromDate(dueDate!) : null,
       'createdAt': FieldValue.serverTimestamp(),
     };

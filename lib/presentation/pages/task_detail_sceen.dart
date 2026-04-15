@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -5,8 +6,12 @@ import '../../../domain/entities/task_entity.dart';
 import '../../../domain/entities/message_entity.dart';
 import '../../presentation/state/message_bloc.dart';
 import 'package:image_picker/image_picker.dart';
-
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../state/task_bloc.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class TaskDetailScreen extends StatefulWidget {
   final TaskEntity task;
@@ -90,69 +95,161 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   void _showEditTaskModal() {
     final editTitleController = TextEditingController(text: widget.task.title);
     final editDescController = TextEditingController(text: widget.task.description);
-    final validPriorities = ['Low', 'Medium', 'High'];
-    String rawPriority = widget.task.priority.trim();
 
-    if (rawPriority.isNotEmpty) {
-      rawPriority = '${rawPriority[0].toUpperCase()}${rawPriority.substring(1).toLowerCase()}';
-    }
-    String selectedPriority = validPriorities.contains(rawPriority) ? rawPriority : 'Medium';
+    String rawPriority = widget.task.priority.trim();
+    if (rawPriority.isNotEmpty) rawPriority = '${rawPriority[0].toUpperCase()}${rawPriority.substring(1).toLowerCase()}';
+    String selectedPriority = ['Low', 'Medium', 'High'].contains(rawPriority) ? rawPriority : 'Medium';
+
+    // Copy dữ liệu cũ để người dùng sửa đổi
+    DateTime? editDueDate = widget.task.dueDate;
+    List<String> editAssigneeIds = List.from(widget.task.assigneeIds);
+    List<String> editAssigneeNames = List.from(widget.task.assigneeNames);
+    List<String> editAssigneeAvatars = List.from(widget.task.assigneeAvatarUrls);
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Cho phép bottom sheet bung to lên
+      isScrollControlled: true,
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom, // Không bị bàn phím che
-            left: 24, right: 24, top: 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Chỉnh sửa công việc', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              TextField(controller: editTitleController, decoration: const InputDecoration(labelText: 'Tên Task')),
-              const SizedBox(height: 16),
-              TextField(controller: editDescController, decoration: const InputDecoration(labelText: 'Mô tả')),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: selectedPriority,
-                items: ['Low', 'Medium', 'High'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
-                onChanged: (val) => selectedPriority = val!,
-                decoration: const InputDecoration(labelText: 'Độ ưu tiên'),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Tạo một TaskEntity mới mang ID cũ nhưng nội dung mới
-                    final updatedTask = TaskEntity(
-                      taskId: widget.task.taskId,
-                      projectId: widget.task.projectId,
-                      title: editTitleController.text.trim(),
-                      description: editDescController.text.trim(),
-                      status: widget.task.status,
-                      priority: selectedPriority,
-                      dueDate: widget.task.dueDate,
-                      assigneeId: widget.task.assigneeId,
-                      assigneeName: widget.task.assigneeName,
-                      assigneeAvatarUrl: widget.task.assigneeAvatarUrl,
-                      createdAt: widget.task.createdAt,
-                    );
-                    context.read<TaskBloc>().add(UpdateTask(updatedTask));
-                    Navigator.pop(context); // Đóng form
-                    Navigator.pop(context); // Tạm thời pop về Kanban để nó load lại data mới
-                  },
-                  child: const Text('Lưu Thay Đổi'),
+        // StatefulBuilder giúp form cập nhật được Ngày và Người ngay lập tức khi chọn
+        return StatefulBuilder(
+            builder: (context, setModalState) {
+              return Padding(
+                padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 24),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Chỉnh sửa công việc', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 16),
+                      TextField(controller: editTitleController, decoration: const InputDecoration(labelText: 'Tên Task', border: OutlineInputBorder())),
+                      const SizedBox(height: 16),
+                      TextField(controller: editDescController, maxLines: 2, decoration: const InputDecoration(labelText: 'Mô tả', border: OutlineInputBorder())),
+                      const SizedBox(height: 16),
+
+                      // Sửa Deadline
+                      TextFormField(
+                        readOnly: true,
+                        onTap: () async {
+                          final picked = await showDatePicker(context: context, initialDate: editDueDate ?? DateTime.now(), firstDate: DateTime(2000), lastDate: DateTime(2030));
+                          if (picked != null) setModalState(() => editDueDate = picked);
+                        },
+                        decoration: const InputDecoration(labelText: 'Deadline', border: OutlineInputBorder(), suffixIcon: Icon(Icons.calendar_today)),
+                        controller: TextEditingController(text: editDueDate == null ? '' : '${editDueDate!.day}/${editDueDate!.month}/${editDueDate!.year}'),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Sửa Độ ưu tiên
+                      DropdownButtonFormField<String>(
+                        value: selectedPriority,
+                        decoration: const InputDecoration(labelText: 'Độ ưu tiên', border: OutlineInputBorder()),
+                        items: ['Low', 'Medium', 'High'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                        onChanged: (val) => setModalState(() => selectedPriority = val!),
+                      ),
+                      const SizedBox(height: 16),
+                      const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('Người thực hiện:', style: TextStyle(fontWeight: FontWeight.bold))
+                      ),
+                      const SizedBox(height: 8),
+                      // Gọi hàm vẽ Checkbox chọn người
+                      _buildMemberSelector(editAssigneeIds, editAssigneeNames, editAssigneeAvatars, setModalState),
+                      const SizedBox(height: 24),
+                      // Nút Lưu thay đổi
+                      SizedBox(
+                        width: double.infinity, height: 50,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            final updatedTask = TaskEntity(
+                              taskId: widget.task.taskId,
+                              projectId: widget.task.projectId,
+                              title: editTitleController.text.trim(),
+                              description: editDescController.text.trim(),
+                              status: widget.task.status,
+                              priority: selectedPriority,
+                              dueDate: editDueDate,
+                              assigneeIds: editAssigneeIds,
+                              assigneeNames: editAssigneeNames,
+                              assigneeAvatarUrls: editAssigneeAvatars,
+                              createdAt: widget.task.createdAt,
+                            );
+                            context.read<TaskBloc>().add(UpdateTask(updatedTask));
+                            Navigator.pop(context); // Đóng form
+                            Navigator.pop(context); // Quay về bảng Kanban
+                          },
+                          child: const Text('Lưu Thay Đổi', style: TextStyle(fontSize: 16)),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
+              );
+            }
         );
       },
+    );
+  }
+
+  bool _isSummarizing = false;
+
+  Future<void> _summarizeChat(List<MessageEntity> messages) async {
+    if (messages.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Chưa có tin nhắn nào để tóm tắt')));
+      return;
+    }
+
+    setState(() => _isSummarizing = true);
+
+    try {
+      // Nhặt tên người gửi và nội dung để ném cho Node.js
+      final chatData = messages.map((m) => {
+        'sender': m.senderName,
+        'content': m.content
+      }).toList();
+
+      final response = await http.post(
+        Uri.parse('http://localhost:3000/api/summarize-chat'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'messages': chatData}),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _showSummaryDialog(data['summary']);
+      } else {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Lỗi không xác định từ Server');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi gọi AI: $e')));
+      }
+    } finally {
+      setState(() => _isSummarizing = false);
+    }
+  }
+
+  void _showSummaryDialog(String summary) {
+    showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.auto_awesome, color: Colors.purple),
+              SizedBox(width: 8),
+              Text('Tóm tắt Chat', style: TextStyle(color: Colors.purple)),
+            ],
+          ),
+          // Dùng SingleChildScrollView để đoạn tóm tắt dài không bị tràn màn hình
+          content: SingleChildScrollView(child: Text(summary, style: const TextStyle(fontSize: 15, height: 1.5))),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Đã hiểu', style: TextStyle(color: Colors.white)),
+            )
+          ],
+        )
     );
   }
 
@@ -221,7 +318,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             contentPadding: EdgeInsets.zero,
             leading: const CircleAvatar(child: Icon(Icons.person)),
             title: const Text('Người thực hiện'),
-            subtitle: Text(widget.task.assigneeName ?? 'Chưa phân công'),
+            subtitle: Text(widget.task.assigneeNames.join(', ')),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
@@ -260,6 +357,36 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   Widget _buildChatTab() {
     return Column(
       children: [
+        BlocBuilder<MessageBloc, MessageState>(
+            builder: (context, state) {
+              List<MessageEntity> currentMessages = [];
+              if (state is MessageLoaded) {
+                currentMessages = state.messages;
+              }
+
+              return Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple.shade50,
+                      elevation: 0,
+                      side: BorderSide(color: Colors.purple.shade200),
+                    ),
+                    icon: _isSummarizing
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.purple))
+                        : const Icon(Icons.auto_awesome, color: Colors.purple),
+                    label: Text(
+                        _isSummarizing ? 'AI đang đọc tin nhắn...' : 'Tóm tắt nội dung Chat',
+                        style: const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold)
+                    ),
+                    onPressed: _isSummarizing ? null : () => _summarizeChat(currentMessages),
+                  ),
+                ),
+              );
+            }
+        ),
         Expanded(
           child: BlocBuilder<MessageBloc, MessageState>(
             builder: (context, state) {
@@ -385,25 +512,167 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
   }
 
+  // Hàm xử lý upload file
+  Future<void> _uploadFile() async {
+    // 1. Dùng withData: true để Web có thể đọc được fileBytes
+    FilePickerResult? result = await FilePicker.pickFiles(
+      type: FileType.any,
+      withData: true,
+      allowMultiple: false,
+    );
+
+    if (result == null || result.files.isEmpty) return;
+
+    final fileBytes = result.files.first.bytes;
+    final fileName = result.files.first.name;
+
+    if (fileBytes == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không thể đọc dữ liệu tệp!')));
+      }
+      return;
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Đang tải "$fileName" lên...')));
+    }
+
+    try {
+      // 2. Upload lên Firebase Storage
+      final storageRef = FirebaseStorage.instance.ref().child('task_attachments/${widget.task.taskId}/$fileName');
+
+      // Khai báo ContentType rỗng để Firebase tự động nhận diện (Word, Excel, PDF...)
+      await storageRef.putData(fileBytes, SettableMetadata(contentType: 'application/octet-stream'));
+      final downloadUrl = await storageRef.getDownloadURL();
+
+      // 3. Cập nhật thẳng vào mảng 'attachments' của Task trên Firestore
+      await FirebaseFirestore.instance.collection('TASKS').doc(widget.task.taskId).update({
+        'attachments': FieldValue.arrayUnion([
+          {'name': fileName, 'url': downloadUrl}
+        ])
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tải tệp thành công!'), backgroundColor: Colors.green));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi tải tệp: $e'), backgroundColor: Colors.red));
+      }
+    }
+  }
+
   // ================= TAB 3: ĐÍNH KÈM FILE =================
   Widget _buildAttachmentsTab() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.folder_open, size: 80, color: Colors.grey),
-          const SizedBox(height: 16),
-          const Text('Chưa có tệp nào được đính kèm', style: TextStyle(color: Colors.grey, fontSize: 16)),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.upload_file),
-            label: const Text('Tải tệp lên'),
-            onPressed: () {
-              // Xử lý up file document, pdf, v.v. (Tương tự up ảnh)
+    return Column(
+      children: [
+        Expanded(
+          child: StreamBuilder<DocumentSnapshot>(
+            // Đọc real-time Document của Task này để lấy mảng file
+            stream: FirebaseFirestore.instance.collection('TASKS').doc(widget.task.taskId).snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData || !snapshot.data!.exists) return const Center(child: CircularProgressIndicator());
+
+              final data = snapshot.data!.data() as Map<String, dynamic>;
+              final List<dynamic> attachments = data['attachments'] ?? [];
+
+              if (attachments.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.folder_open, size: 80, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text('Chưa có tệp nào được đính kèm', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                    ],
+                  ),
+                );
+              }
+
+              // Vẽ danh sách file
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: attachments.length,
+                itemBuilder: (context, index) {
+                  final file = attachments[index] as Map<String, dynamic>;
+                  return Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.insert_drive_file, color: Colors.blueAccent, size: 32),
+                      title: Text(file['name'] ?? 'Tệp không tên', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: const Text('Nhấn để tải xuống/xem'),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.download),
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã nhận link file!')));
+                        },
+                      ),
+                    ),
+                  );
+                },
+              );
             },
-          )
-        ],
-      ),
+          ),
+        ),
+        // Nút Tải lên
+        Container(
+          padding: const EdgeInsets.all(16),
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+            icon: const Icon(Icons.upload_file),
+            label: const Text('Tải tệp mới lên', style: TextStyle(fontSize: 16)),
+            onPressed: _uploadFile,
+          ),
+        )
+      ],
+    );
+  }
+
+  // Hàm hiển thị danh sách chọn người trong Modal
+  Widget _buildMemberSelector(List<String> ids, List<String> names, List<String> avatars, StateSetter setModalState) {
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance.collection('PROJECTS').doc(widget.task.projectId).get(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        List<dynamic> memberIds = snapshot.data!.get('memberIds') ?? [];
+        if (memberIds.isEmpty) return const Text('Dự án chưa có thành viên.');
+
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance.collection('USERS').where(FieldPath.documentId, whereIn: memberIds).snapshots(),
+          builder: (context, userSnap) {
+            if (!userSnap.hasData) return const SizedBox();
+
+            return Column(
+              children: userSnap.data!.docs.map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final uid = doc.id;
+                final name = data['fullName'] ?? data['email'].split('@')[0];
+                final avatar = data['avatarUrl'];
+                final isSelected = ids.contains(uid);
+
+                return CheckboxListTile(
+                  value: isSelected,
+                  title: Text(name),
+                  secondary: CircleAvatar(
+                    backgroundImage: avatar != null ? NetworkImage(avatar) : null,
+                    child: avatar == null ? Text(name[0].toUpperCase()) : null,
+                  ),
+                  onChanged: (val) {
+                    setModalState(() {
+                      if (val == true) {
+                        ids.add(uid); names.add(name); avatars.add(avatar ?? '');
+                      } else {
+                        int i = ids.indexOf(uid);
+                        ids.removeAt(i); names.removeAt(i); avatars.removeAt(i);
+                      }
+                    });
+                  },
+                );
+              }).toList(),
+            );
+          },
+        );
+      },
     );
   }
 }

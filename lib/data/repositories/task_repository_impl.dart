@@ -14,19 +14,19 @@ class TaskRepositoryImpl implements TaskRepository {
 
   @override
   Future<void> createTask(TaskEntity task) async {
-    // Tạo ID duy nhất dựa trên thời gian thực
-    final newTaskId = DateTime.now().millisecondsSinceEpoch.toString();
-
     final taskModel = TaskModel(
-      taskId: newTaskId,
+      taskId: task.taskId,
       projectId: task.projectId,
       title: task.title,
       description: task.description,
       status: task.status,
       priority: task.priority,
+      dueDate: task.dueDate,
+      assigneeIds: task.assigneeIds,
+      assigneeNames: task.assigneeNames,
+      assigneeAvatarUrls: task.assigneeAvatarUrls,
       createdAt: task.createdAt,
     );
-
     // Data Source gọi Firebase
     await remoteDataSource.createTask(taskModel);
   }
@@ -49,9 +49,9 @@ class TaskRepositoryImpl implements TaskRepository {
       status: task.status,
       priority: task.priority,
       dueDate: task.dueDate,
-      assigneeId: task.assigneeId,
-      assigneeName: task.assigneeName,
-      assigneeAvatarUrl: task.assigneeAvatarUrl,
+      assigneeIds: task.assigneeIds,
+      assigneeNames: task.assigneeNames,
+      assigneeAvatarUrls: task.assigneeAvatarUrls,
       createdAt: task.createdAt,
     );
 

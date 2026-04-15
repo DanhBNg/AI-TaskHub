@@ -16,25 +16,26 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
   DateTime? _selectedDueDate;
-  String? _selectedAssigneeId;
-  String? _selectedAssigneeName;
-  String? _selectedAssigneeAvatar;
   String _selectedPriority = 'Medium';
   final List<String> _priorities = ['Low', 'Medium', 'High'];
+  List<String> _selectedAssigneeIds = [];
+  List<String> _selectedAssigneeNames = [];
+  List<String> _selectedAssigneeAvatars = [];
 
   void _submit() {
     if (_titleController.text.trim().isEmpty) return;
+    final newTaskId = FirebaseFirestore.instance.collection('TASKS').doc().id;
     final newTask = TaskEntity(
-      taskId: '', // ID sẽ do Firebase tự tạo
+      taskId: newTaskId,
       projectId: widget.projectId,
       title: _titleController.text.trim(),
       description: _descController.text.trim(),
-      status: 'To Do', // Trạng thái mặc định
+      status: 'todo', // Trạng thái mặc định
       priority: _selectedPriority,
       dueDate: _selectedDueDate,
-      assigneeId: _selectedAssigneeId,
-      assigneeName: _selectedAssigneeName,
-      assigneeAvatarUrl: _selectedAssigneeAvatar,
+      assigneeIds: _selectedAssigneeIds,
+      assigneeNames: _selectedAssigneeNames,
+      assigneeAvatarUrls: _selectedAssigneeAvatars,
       createdAt: DateTime.now(),
     );
     context.read<TaskBloc>().add(CreateTask(newTask));
@@ -44,8 +45,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   Future<void> _selectDueDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().add(const Duration(days: 1)), // Mặc định ngày mai
-      firstDate: DateTime.now(), // Không cho chọn ngày trong quá khứ
+      initialDate: DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
       lastDate: DateTime(2030),
     );
     if (picked != null && picked != _selectedDueDate) {
@@ -55,52 +56,62 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     }
   }
 
-  void _showAssigneePicker(BuildContext context) async {
+  void _showAssigneePicker() {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) {
         return FutureBuilder<DocumentSnapshot>(
-          // Lấy thông tin dự án để xem ai đang là thành viên
           future: FirebaseFirestore.instance.collection('PROJECTS').doc(widget.projectId).get(),
           builder: (context, snapshot) {
             if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-
             List<dynamic> memberIds = snapshot.data!.get('memberIds') ?? [];
-            if (memberIds.isEmpty) return const Center(child: Text('Dự án chưa có thành viên nào.'));
+            if (memberIds.isEmpty) return const Center(child: Text('Dự án chưa có thành viên.'));
 
-            // Truy vấn lấy thông tin chi tiết của các thành viên từ bảng USERS
             return StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('USERS')
-                  .where(FieldPath.documentId, whereIn: memberIds).snapshots(),
-              builder: (context, userSnapshot) {
-                if (!userSnapshot.hasData) return const Center(child: CircularProgressIndicator());
+              stream: FirebaseFirestore.instance.collection('USERS').where(FieldPath.documentId, whereIn: memberIds).snapshots(),
+              builder: (context, userSnap) {
+                if (!userSnap.hasData) return const Center(child: CircularProgressIndicator());
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: userSnapshot.data!.docs.length,
-                  itemBuilder: (context, index) {
-                    var userData = userSnapshot.data!.docs[index].data() as Map<String, dynamic>;
-                    String uid = userSnapshot.data!.docs[index].id;
-                    String name = userData['fullName'] ?? userData['email'].split('@')[0];
-                    String? avatar = userData['avatarUrl'];
+                // Dùng StatefulBuilder để Checkbox có thể update UI ngay trong BottomSheet
+                return StatefulBuilder(
+                    builder: (context, setModalState) {
+                      return ListView.builder(
+                        itemCount: userSnap.data!.docs.length,
+                        itemBuilder: (context, index) {
+                          var doc = userSnap.data!.docs[index];
+                          var data = doc.data() as Map<String, dynamic>;
+                          String uid = doc.id;
+                          String name = data['fullName'] ?? data['email'].split('@')[0];
+                          String? avatar = data['avatarUrl'];
 
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundImage: avatar != null ? NetworkImage(avatar) : null,
-                        child: avatar == null ? Text(name[0].toUpperCase()) : null,
-                      ),
-                      title: Text(name),
-                      onTap: () {
-                        setState(() {
-                          _selectedAssigneeId = uid;
-                          _selectedAssigneeName = name;
-                          _selectedAssigneeAvatar = avatar;
-                        });
-                        Navigator.pop(context); // Đóng bảng chọn
-                      },
-                    );
-                  },
+                          bool isSelected = _selectedAssigneeIds.contains(uid);
+
+                          return CheckboxListTile(
+                            value: isSelected,
+                            title: Text(name),
+                            secondary: CircleAvatar(
+                              backgroundImage: avatar != null ? NetworkImage(avatar) : null,
+                              child: avatar == null ? Text(name[0].toUpperCase()) : null,
+                            ),
+                            onChanged: (bool? checked) {
+                              setModalState(() {
+                                if (checked == true) {
+                                  _selectedAssigneeIds.add(uid);
+                                  _selectedAssigneeNames.add(name);
+                                  _selectedAssigneeAvatars.add(avatar ?? '');
+                                } else {
+                                  int idx = _selectedAssigneeIds.indexOf(uid);
+                                  _selectedAssigneeIds.removeAt(idx);
+                                  _selectedAssigneeNames.removeAt(idx);
+                                  _selectedAssigneeAvatars.removeAt(idx);
+                                }
+                              });
+                              setState(() {}); // Cập nhật màn hình chính
+                            },
+                          );
+                        },
+                      );
+                    }
                 );
               },
             );
@@ -114,64 +125,50 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Thêm Công Việc Mới')),
-      body: Padding(
+      body: SingleChildScrollView( // Chống lỗi bàn phím che màn hình
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
             TextField(controller: _titleController, decoration: const InputDecoration(labelText: 'Tên Task *', border: OutlineInputBorder())),
             const SizedBox(height: 16),
             TextField(controller: _descController, maxLines: 3, decoration: const InputDecoration(labelText: 'Mô tả chi tiết', border: OutlineInputBorder())),
-            const SizedBox(height: 24),
             const SizedBox(height: 16),
-            // KHU VỰC CHỌN NGƯỜI NHẬN VIỆC (ASSIGNEE)
+
+            TextFormField(
+              readOnly: true,
+              onTap: () => _selectDueDate(context),
+              decoration: const InputDecoration(
+                labelText: 'Hạn chót (Deadline)',
+                border: OutlineInputBorder(),
+                suffixIcon: Icon(Icons.calendar_today, color: Colors.blue),
+              ),
+              controller: TextEditingController(
+                text: _selectedDueDate == null ? '' : '${_selectedDueDate!.day}/${_selectedDueDate!.month}/${_selectedDueDate!.year}',
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ĐỘ ƯU TIÊN
+            DropdownButtonFormField<String>(
+              value: _selectedPriority,
+              decoration: const InputDecoration(labelText: 'Độ ưu tiên', border: OutlineInputBorder()),
+              items: _priorities.map((p) => DropdownMenuItem(value: p, child: Text(p, style: TextStyle(color: p == 'High' ? Colors.red : (p == 'Medium' ? Colors.orange : Colors.green))))).toList(),
+              onChanged: (val) => setState(() => _selectedPriority = val!),
+            ),
+            const SizedBox(height: 16),
+
+            // CHỌN NHIỀU THÀNH VIÊN
             ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(
-                backgroundColor: Colors.grey.shade200,
-                backgroundImage: _selectedAssigneeAvatar != null ? NetworkImage(_selectedAssigneeAvatar!) : null,
-                child: _selectedAssigneeAvatar == null ? const Icon(Icons.person_add, color: Colors.blue) : null,
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: Colors.grey.shade400)),
+              leading: const Icon(Icons.group_add, color: Colors.blue),
               title: const Text('Người thực hiện'),
-              subtitle: Text(_selectedAssigneeName ?? 'Chưa phân công'),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () => _showAssigneePicker(context),
+              subtitle: Text(_selectedAssigneeNames.isEmpty ? 'Chưa phân công' : _selectedAssigneeNames.join(', ')),
+              trailing: const Icon(Icons.edit),
+              onTap: _showAssigneePicker,
             ),
-            Expanded(
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.calendar_today, size: 18),
-                label: Text(_selectedDueDate == null
-                    ? 'Thêm Deadline'
-                    : '${_selectedDueDate!.day}/${_selectedDueDate!.month}/${_selectedDueDate!.year}'),
-                onPressed: () => _selectDueDate(context),
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Dropdown chọn mức độ
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                value: _selectedPriority,
-                decoration: const InputDecoration(
-                  labelText: 'Độ ưu tiên',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                ),
-                items: _priorities.map((String priority) {
-                  return DropdownMenuItem<String>(
-                    value: priority,
-                    child: Text(priority, style: TextStyle(
-                        color: priority == 'High' ? Colors.red : (priority == 'Medium' ? Colors.orange : Colors.green)
-                    )),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() { _selectedPriority = newValue!; });
-                },
-              ),
-            ),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(onPressed: _submit, child: const Text('Thêm Task')),
-            ),
+            const SizedBox(height: 32),
+
+            SizedBox(width: double.infinity, height: 50, child: ElevatedButton(onPressed: _submit, child: const Text('Thêm Task', style: TextStyle(fontSize: 16)))),
           ],
         ),
       ),
