@@ -80,25 +80,56 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
     );
   }
 
-  void _showEditProjectModal(BuildContext context) {
-    final nameController = TextEditingController(text: widget.projectName);
+  void _showEditProjectModal(BuildContext context) async {
+    // Lấy dữ liệu dự án hiện tại từ Firebase
+    final doc = await FirebaseFirestore.instance.collection('PROJECTS').doc(widget.projectId).get();
+    if (!doc.exists) return;
 
+    final currentName = doc.data()?['name'] ?? widget.projectName;
+    final currentDesc = doc.data()?['description'] ?? '';
+
+    //
+    final nameController = TextEditingController(text: currentName);
+    final descController = TextEditingController(text: currentDesc);
+
+    if (!context.mounted) return;
+
+    // 4. Mở hộp thoại
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Đổi tên dự án'),
-        content: TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Tên dự án mới', border: OutlineInputBorder())),
+        title: const Text('Chỉnh sửa dự án'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min, // Để Dialog không bị dài ngoằng
+          children: [
+            TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Tên dự án *', border: OutlineInputBorder())
+            ),
+            const SizedBox(height: 16),
+            TextField(
+                controller: descController,
+                maxLines: 3,
+                decoration: const InputDecoration(labelText: 'Mô tả dự án', border: OutlineInputBorder())
+            ),
+          ],
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
           ElevatedButton(
             onPressed: () async {
               if (nameController.text.trim().isEmpty) return;
-              // Gọi trực tiếp Firebase để update cho nhanh (hoặc dùng ProjectBloc nếu bạn đã định nghĩa UpdateProject Event)
+
+              // Cập nhật cả name và description lên Firebase
               await FirebaseFirestore.instance.collection('PROJECTS').doc(widget.projectId).update({
-                'name': nameController.text.trim()
+                'name': nameController.text.trim(),
+                'description': descController.text.trim(),
               });
-              Navigator.pop(ctx);
-              Navigator.pop(context); // Bắt buộc quay về Dashboard để reload lại tên
+
+              if (context.mounted) {
+                Navigator.pop(ctx);
+                Navigator.pop(context);
+              }
             },
             child: const Text('Lưu'),
           ),
@@ -183,7 +214,7 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
                       // Đổi localhost thành IP máy bạn nếu chạy máy ảo (VD: 10.0.2.2 cho Android Emulator)
                       // Nếu dùng Chrome Web thì cứ để localhost
                       final response = await http.post(
-                        Uri.parse('http://localhost:3000/api/generate-tasks'),
+                        Uri.parse('https://taskhub-backend-ords.onrender.com/api/generate-tasks'),
                         headers: {'Content-Type': 'application/json'},
                         body: jsonEncode({'prompt': promptController.text.trim()}),
                       );

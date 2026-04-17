@@ -12,6 +12,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../state/task_bloc.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   final TaskEntity task;
@@ -66,6 +67,21 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
       // Gửi event lên BLoC kèm theo Mảng Byte
       context.read<MessageBloc>().add(SendMessage(newMessage, imageBytes: imageBytes));
+    }
+  }
+
+  String _translateStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'todo':
+        return 'Cần làm';
+      case 'in_progress':
+        return 'Đang làm';
+      case 'review':
+        return 'Chờ duyệt';
+      case 'done':
+        return 'Hoàn thành';
+      default:
+        return status;
     }
   }
 
@@ -208,7 +224,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       }).toList();
 
       final response = await http.post(
-        Uri.parse('http://localhost:3000/api/summarize-chat'),
+        Uri.parse('https://taskhub-backend-ords.onrender.com/api/summarize-chat'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'messages': chatData}),
       );
@@ -251,6 +267,34 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           ],
         )
     );
+  }
+
+  Future<void> _deleteFile(Map<String, dynamic> fileData) async {
+    try {
+      final String fileUrl = fileData['url'];
+      final String fileName = fileData['name'];
+
+      // 1. Xóa file khỏi Firebase Storage
+      final storageRef = FirebaseStorage.instance.refFromURL(fileUrl);
+      await storageRef.delete();
+
+      // 2. Xóa thông tin file khỏi mảng 'attachments' trong Firestore
+      await FirebaseFirestore.instance.collection('TASKS').doc(widget.task.taskId).update({
+        'attachments': FieldValue.arrayRemove([fileData])
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Đã xóa tệp: $fileName'), backgroundColor: Colors.orange)
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi khi xóa tệp: $e'), backgroundColor: Colors.red)
+        );
+      }
+    }
   }
 
   @override
@@ -296,7 +340,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Chip(label: Text(widget.task.status, style: const TextStyle(color: Colors.white)), backgroundColor: Colors.blueAccent),
+              Chip(label: Text(_translateStatus(widget.task.status), style: const TextStyle(color: Colors.white)), backgroundColor: Colors.blueAccent),
               Chip(label: Text('Ưu tiên: ${widget.task.priority}')),
             ],
           ),
@@ -395,11 +439,16 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               // THÊM DÒNG NÀY ĐỂ BẮT LỖI
               if (state is MessageError) return Center(child: Text('Lỗi: ${state.error}', style: const TextStyle(color: Colors.red)));
               if (state is MessageLoaded) {
+                // 1. Đảo ngược danh sách tin nhắn để cái mới nhất nằm ở vị trí đầu tiên
+                final reversedMessages = state.messages.reversed.toList();
+
                 return ListView.builder(
+                  reverse: true, // 2. QUAN TRỌNG: Lật ngược danh sách từ dưới lên trên
                   padding: const EdgeInsets.all(16),
-                  itemCount: state.messages.length,
+                  itemCount: reversedMessages.length,
                   itemBuilder: (context, index) {
-                    final msg = state.messages[index];
+                    // 3. Sử dụng danh sách đã đảo ngược
+                    final msg = reversedMessages[index];
                     final isMe = msg.senderId == currentUser?.uid;
 
                     return Container(
@@ -437,7 +486,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Tên người gửi (Chỉ hiện nếu không phải là mình)
+                                  // Tên người gửi
                                   if (!isMe) ...[
                                     Text(msg.senderName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.black54)),
                                     const SizedBox(height: 4),
@@ -458,19 +507,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                               ),
                             ),
                           ),
-
-                          // hiện avt chính mình
-                          // if (isMe) ...[
-                          //   const SizedBox(width: 8),
-                          //   CircleAvatar(
-                          //     radius: 16,
-                          //     backgroundColor: Colors.white,
-                          //     backgroundImage: msg.senderAvatarUrl != null ? NetworkImage(msg.senderAvatarUrl!) : null,
-                          //     child: msg.senderAvatarUrl == null
-                          //         ? Text(msg.senderName[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent))
-                          //         : null,
-                          //   ),
-                          // ],
                         ],
                       ),
                     );
@@ -563,6 +599,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   }
 
   // ================= TAB 3: ĐÍNH KÈM FILE =================
+  // ================= TAB 3: ĐÍNH KÈM FILE =================
   Widget _buildAttachmentsTab() {
     return Column(
       children: [
@@ -595,16 +632,68 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 itemCount: attachments.length,
                 itemBuilder: (context, index) {
                   final file = attachments[index] as Map<String, dynamic>;
+                  final urlString = file['url'];
+
                   return Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.insert_drive_file, color: Colors.blueAccent, size: 32),
-                      title: Text(file['name'] ?? 'Tệp không tên', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: const Text('Nhấn để tải xuống/xem'),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.download),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã nhận link file!')));
-                        },
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () async {
+                        if (urlString == null || urlString.isEmpty) return;
+                        final Uri url = Uri.parse(urlString);
+
+                        if (await canLaunchUrl(url)) {
+                          await launchUrl(url, webOnlyWindowName: '_blank');
+                        } else {
+                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không thể mở tệp')));
+                        }
+                      },
+                      child: ListTile(
+                        leading: const Icon(Icons.insert_drive_file, color: Colors.blueAccent, size: 32),
+                        title: Text(file['name'] ?? 'Tệp không tên', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: const Text('Nhấn để xem tệp ở tab mới'),
+
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              tooltip: 'Tải xuống',
+                              icon: const Icon(Icons.download, color: Colors.blue),
+                              onPressed: () async {
+                                if (urlString == null || urlString.isEmpty) return;
+                                final Uri url = Uri.parse(urlString);
+                                if (await canLaunchUrl(url)) {
+                                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                                }
+                              },
+                            ),
+
+                            // Nút Xóa
+                            IconButton(
+                              tooltip: 'Xóa tệp',
+                              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('Xác nhận xóa'),
+                                    content: Text('Bạn có chắc chắn muốn xóa tệp "${file['name']}" không?'),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
+                                      ElevatedButton(
+                                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                        onPressed: () {
+                                          Navigator.pop(ctx);
+                                          _deleteFile(file); // Gọi hàm xóa mà chúng ta đã viết trước đó
+                                        },
+                                        child: const Text('Xóa', style: TextStyle(color: Colors.white)),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );
