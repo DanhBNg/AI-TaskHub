@@ -7,9 +7,9 @@ class TaskEntity extends Equatable {
   final String description;
   final String status;
   final String priority;
-  final String? assigneeId;
-  final String? assigneeName;
-  final String? assigneeAvatarUrl;
+  final List<String> assigneeIds;
+  final List<String> assigneeNames;
+  final List<String> assigneeAvatarUrls;
   final DateTime? dueDate;
   final DateTime createdAt;
 
@@ -20,9 +20,9 @@ class TaskEntity extends Equatable {
     this.description = '',
     this.status = 'todo',
     this.priority = 'medium',
-    required this.createdAt, this.assigneeId, this.assigneeName, this.assigneeAvatarUrl, this.dueDate,
+    required this.createdAt, this.dueDate, required this.assigneeIds, required this.assigneeNames, required this.assigneeAvatarUrls,
   });
 
   @override
-  List<Object?> get props => [taskId, projectId, title, description, status, priority, assigneeId, assigneeName, assigneeAvatarUrl, dueDate, createdAt];
+  List<Object?> get props => [taskId, projectId, title, description, status, priority, assigneeIds, assigneeNames, assigneeAvatarUrls, dueDate, createdAt];
 }

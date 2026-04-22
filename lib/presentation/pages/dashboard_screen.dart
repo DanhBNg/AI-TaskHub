@@ -36,19 +36,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
         actions: [
           BlocBuilder<InviteBloc, InviteState>(
               builder: (context, state) {
-                int count = 0;
-                if (state is InviteLoaded) count = state.invites.length;
+                List<InviteEntity> currentInvites = [];
+                if (state is InviteLoaded) {
+                  currentInvites = state.invites;
+                }
+                int count = currentInvites.length;
+
                 return Stack(
                   alignment: Alignment.center,
                   children: [
                     IconButton(
                       icon: const Icon(Icons.notifications),
                       onPressed: () {
-                        if (count == 0) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không có thông báo nào')));
-                        } else {
-                          _showInvitesDialog(context, (state as InviteLoaded).invites);
-                        }
+                        _showInvitesDialog(context, currentInvites);
                       },
                     ),
                     if (count > 0)
@@ -125,19 +125,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
               leading: const Icon(Icons.person, color: Colors.green),
               title: const Text('Thông tin cá nhân'),
               onTap: () {
-                Navigator.pop(context); // Đóng menu
-                // Chuyển sang màn hình Profile
+                Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
               },
             ),
-            const Divider(), // Đường kẻ ngang phân cách
+            const Divider(),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),
               onTap: () async {
                 await FirebaseAuth.instance.signOut();
                 if (context.mounted) {
-                  // Chuyển về màn hình Login (Nhớ import LoginScreen nếu chưa có)
                   Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
                 }
               },
@@ -147,11 +145,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       body: BlocBuilder<ProjectBloc, ProjectState>(
         builder: (context, state) {
-          // 1. Trạng thái đang tải dữ liệu
+          // đang tải dữ liệu
           if (state is ProjectLoading) {
             return const Center(child: CircularProgressIndicator());
           }
-          // 2. Trạng thái Firebase báo lỗi (như chưa tạo xong Index)
+          //
           else if (state is ProjectError) {
             return Center(
               child: Padding(
@@ -164,7 +162,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             );
           }
-          // 3. Trạng thái đã tải xong dữ liệu thành công
+          // Trạng thái đã tải xong dữ liệu thành công
           else if (state is ProjectLoaded) {
 
             // Xử lý khi chưa có dự án
@@ -226,7 +224,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
             title: const Text('Lời mời tham gia dự án'),
             content: SizedBox(
                 width: double.maxFinite,
-                child: ListView.builder(
+                // Kiểm tra nếu danh sách rỗng
+                child: invites.isEmpty
+                    ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20.0),
+                  child: Text(
+                    'Bạn không có thông báo',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                )
+                    : ListView.builder(
                     shrinkWrap: true,
                     itemCount: invites.length,
                     itemBuilder: (context, index) {

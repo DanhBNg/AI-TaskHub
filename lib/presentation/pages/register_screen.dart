@@ -13,12 +13,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -62,12 +64,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   decoration: const InputDecoration(labelText: 'Mật khẩu', border: OutlineInputBorder()),
                   obscureText: true,
                 ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _confirmPasswordController,
+                  obscureText: true, // Che mật khẩu
+                  decoration: const InputDecoration(
+                    labelText: 'Nhập lại mật khẩu',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 const SizedBox(height: 24),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
                   onPressed: state is AuthLoading
                       ? null
                       : () {
+                    // ko để trôngs
+                    if (_nameController.text.trim().isEmpty ||
+                        _emailController.text.trim().isEmpty ||
+                        _passwordController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin!'), backgroundColor: Colors.red),
+                      );
+                      return;
+                    }
+
+                    // Kiểm tra mật khẩu nhập lại
+                    if (_passwordController.text != _confirmPasswordController.text) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Mật khẩu nhập lại không khớp!'), backgroundColor: Colors.red),
+                      );
+                      return;
+                    }
                     context.read<AuthBloc>().add(
                       SignUpRequested(_emailController.text, _passwordController.text, _nameController.text),
                     );
