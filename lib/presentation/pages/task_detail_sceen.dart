@@ -16,7 +16,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   final TaskEntity task;
-  const TaskDetailScreen({super.key, required this.task});
+  final int initialTabIndex;
+  const TaskDetailScreen({super.key, required this.task, this.initialTabIndex = 0,});
 
   @override
   State<TaskDetailScreen> createState() => _TaskDetailScreenState();
@@ -34,7 +35,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   void _sendMessage() {
     if (_chatController.text.trim().isEmpty || currentUser == null) return;
-
+    final content = _chatController.text.trim();
     final newMessage = MessageEntity(
       messageId: '',
       taskId: widget.task.taskId,
@@ -47,6 +48,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
     context.read<MessageBloc>().add(SendMessage(newMessage));
     _chatController.clear();
+    FirebaseFirestore.instance.collection('TASKS').doc(widget.task.taskId).update({
+      'lastMessage': content,
+      'lastMessageTime': FieldValue.serverTimestamp(),
+    }).catchError((e) => print(e));
   }
 
   Future<void> _pickAndSendImage() async {
@@ -67,6 +72,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
       // Gửi event lên BLoC kèm theo Mảng Byte
       context.read<MessageBloc>().add(SendMessage(newMessage, imageBytes: imageBytes));
+      FirebaseFirestore.instance.collection('TASKS').doc(widget.task.taskId).update({
+        'lastMessage': 'Đã gửi một hình ảnh',
+        'lastMessageTime': FieldValue.serverTimestamp(),
+      }).catchError((e) => print(e));
     }
   }
 
@@ -301,6 +310,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   Widget build(BuildContext context) {
     // Bao bọc toàn bộ Scaffold bằng DefaultTabController
     return DefaultTabController(
+      initialIndex: widget.initialTabIndex,
       length: 3, // Khai báo có 3 Tab
       child: Scaffold(
         appBar: AppBar(
