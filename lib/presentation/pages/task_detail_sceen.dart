@@ -384,23 +384,57 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           const Divider(height: 40),
 
           // Nút thao tác
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.edit, color: Colors.blue), label: const Text('Chỉnh sửa'),
-                  onPressed: _showEditTaskModal,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-                  icon: const Icon(Icons.delete, color: Colors.white), label: const Text('Xóa Task', style: TextStyle(color: Colors.white)),
-                  onPressed: _deleteTask,
-                ),
-              ),
-            ],
+          FutureBuilder<DocumentSnapshot>(
+            future: FirebaseFirestore.instance.collection('PROJECTS').doc(widget.task.projectId).get(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+
+              final data = snapshot.data!.data() as Map<String, dynamic>;
+              final String ownerId = data['ownerId'] ?? '';
+              final Map<String, dynamic> roles = data['roles'] ?? {};
+              final String currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+              // Kiểm tra quyền (Owner hoặc Admin)
+              final bool hasPermission = (currentUid == ownerId) || (roles[currentUid] == 'Admin');
+
+              if (!hasPermission) {
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.shade200)
+                  ),
+                  child: const Text(
+                    '🔒 Chỉ Chủ dự án và Quản trị viên mới có quyền Sửa hoặc Xóa công việc này.',
+                    style: TextStyle(color: Colors.red, fontStyle: FontStyle.italic),
+                    textAlign: TextAlign.center,
+                  ),
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.edit, color: Colors.blue),
+                      label: const Text('Chỉnh sửa'),
+                      onPressed: _showEditTaskModal,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                      icon: const Icon(Icons.delete, color: Colors.white),
+                      label: const Text('Xóa Task', style: TextStyle(color: Colors.white)),
+                      onPressed: _deleteTask,
+                    ),
+                  ),
+                ],
+              );
+            },
           )
         ],
       ),
