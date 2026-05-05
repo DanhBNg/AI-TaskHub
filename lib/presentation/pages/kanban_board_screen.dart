@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskhub_ai/presentation/pages/task_detail_sceen.dart';
@@ -32,52 +33,114 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
     super.initState();
     context.read<TaskBloc>().add(LoadTasks(widget.projectId));
   }
-  void _showMembersModal(BuildContext context) {
+  void _showMembersManagementModal() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) {
-        return FutureBuilder<DocumentSnapshot>(
-          future: FirebaseFirestore.instance.collection('PROJECTS').doc(widget.projectId).get(),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-            List<dynamic> memberIds = snapshot.data!.get('memberIds') ?? [];
-            if (memberIds.isEmpty) return const Center(child: Text('Dự án chưa có thành viên.'));
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.7,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              const Text('Danh sách thành viên', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20),
+              Expanded(
+                child: StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseFirestore.instance.collection('PROJECTS').doc(widget.projectId).snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text('Thành viên dự án', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    final data = snapshot.data!.data() as Map<String, dynamic>;
+                    final List<dynamic> memberIds = data['memberIds'] ?? [];
+                    final Map<String, dynamic> roles = data['roles'] ?? {};
+                    final String ownerId = data['ownerId'] ?? '';
+                    final bool isOwner = (FirebaseAuth.instance.currentUser?.uid == ownerId);
+
+                    return ListView.builder(
+                      itemCount: memberIds.length,
+                      itemBuilder: (context, index) {
+                        final uid = memberIds[index];
+                        final String roleName = (uid == ownerId)
+                            ? 'Chủ dự án'
+                            : (roles[uid] == 'Admin' ? 'Quản trị viên' : 'Thành viên');
+
+                        return FutureBuilder<DocumentSnapshot>(
+                          future: FirebaseFirestore.instance.collection('USERS').doc(uid).get(),
+                          builder: (context, userSnap) {
+                            if (!userSnap.hasData) return const SizedBox();
+                            final userData = userSnap.data!.data() as Map<String, dynamic>;
+                            final name = userData['fullName'] ?? 'Người dùng';
+                            final avatar = userData['avatarUrl'];
+
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundImage: avatar != null ? NetworkImage(avatar) : null,
+                                child: avatar == null ? Text(name[0].toUpperCase()) : null,
+                              ),
+                              title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: Text('Vai trò: $roleName', style: TextStyle(color: uid == ownerId ? Colors.red : Colors.blueAccent)),
+                              // logic hiện nuts
+                              trailing: (isOwner && uid != ownerId)
+                                  ? PopupMenuButton<String>(
+                                onSelected: (value) {
+                                  if (value == 'delete') {
+                                    _removeMember(uid, name);
+                                  } else {
+                                    _updateMemberRole(uid, value);
+                                  }
+                                },
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem(value: 'Admin', child: Text('Gán quyền Admin')),
+                                  const PopupMenuItem(value: 'Member', child: Text('Gán quyền Member')),
+                                  const PopupMenuDivider(),
+                                  const PopupMenuItem(value: 'delete', child: Text('Xóa khỏi dự án', style: TextStyle(color: Colors.red))),
+                                ],
+                              )
+                                  : (uid == ownerId ? const Icon(Icons.star, color: Colors.amber) : null),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
                 ),
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance.collection('USERS').where(FieldPath.documentId, whereIn: memberIds).snapshots(),
-                    builder: (context, userSnap) {
-                      if (!userSnap.hasData) return const Center(child: CircularProgressIndicator());
-                      return ListView.builder(
-                        itemCount: userSnap.data!.docs.length,
-                        itemBuilder: (context, index) {
-                          var data = userSnap.data!.docs[index].data() as Map<String, dynamic>;
-                          String name = data['fullName'] ?? data['email'].split('@')[0];
-                          String? avatar = data['avatarUrl'];
-                          return ListTile(
-                            leading: CircleAvatar(backgroundImage: avatar != null ? NetworkImage(avatar) : null, child: avatar == null ? Text(name[0].toUpperCase()) : null),
-                            title: Text(name),
-                            subtitle: Text(data['email'] ?? ''),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            );
-          },
+              ),
+            ],
+          ),
         );
       },
     );
+  }
+  Future<void> _updateMemberRole(String uid, String newRole) async {
+    await FirebaseFirestore.instance.collection('PROJECTS').doc(widget.projectId).update({
+      'roles.$uid': newRole, // Cập nhật trực tiếp vào Map roles
+    });
+  }
+
+  Future<void> _removeMember(String uid, String name) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xác nhận'),
+        content: Text('Xóa $name khỏi dự án?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Xóa', style: TextStyle(color: Colors.red))
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await FirebaseFirestore.instance.collection('PROJECTS').doc(widget.projectId).update({
+        'memberIds': FieldValue.arrayRemove([uid]),
+        'roles.$uid': FieldValue.delete(), // Xóa key của user
+      });
+    }
   }
 
   void _showEditProjectModal(BuildContext context) async {
@@ -149,10 +212,6 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
-              // Gọi BLoC để xóa (Đảm bảo ProjectBloc của bạn đã có DeleteProject)
-              // context.read<ProjectBloc>().add(DeleteProject(widget.projectId));
-
-              // Hoặc gọi thẳng Firebase nếu bạn muốn xử lý nhanh:
               await FirebaseFirestore.instance.collection('PROJECTS').doc(widget.projectId).delete();
 
               Navigator.pop(ctx); // Đóng hộp thoại
@@ -208,11 +267,9 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
                   onPressed: () async {
                     if (promptController.text.trim().isEmpty) return;
 
-                    setDialogState(() => _isAILoading = true); // Hiện xoay xoay
+                    setDialogState(() => _isAILoading = true);
 
                     try {
-                      // Đổi localhost thành IP máy bạn nếu chạy máy ảo (VD: 10.0.2.2 cho Android Emulator)
-                      // Nếu dùng Chrome Web thì cứ để localhost
                       final response = await http.post(
                         Uri.parse('https://taskhub-backend-ords.onrender.com/api/generate-tasks'),
                         headers: {'Content-Type': 'application/json'},
@@ -289,7 +346,7 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
           ),
           PopupMenuButton<String>(
             onSelected: (value) {
-              if (value == 'members') _showMembersModal(context);
+              if (value == 'members') _showMembersManagementModal();
               if (value == 'edit') _showEditProjectModal(context);
               if (value == 'delete') _deleteProject(context);
             },
@@ -324,11 +381,36 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => CreateTaskScreen(projectId: widget.projectId))
-        ),
-        child: const Icon(Icons.add),
+          onPressed: () async {
+            final projectSnap = await FirebaseFirestore.instance.collection('PROJECTS').doc(widget.projectId).get();
+            final data = projectSnap.data() as Map<String, dynamic>;
+            final String ownerId = data['ownerId'] ?? '';
+            final Map<String, dynamic> roles = data['roles'] ?? {};
+            final String currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+            final bool hasPermission = (currentUid == ownerId) || (roles[currentUid] == 'Admin');
+
+            if (!hasPermission) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('🔒 Chỉ Chủ dự án và Quản trị viên mới được tạo Task mới!'),
+                        backgroundColor: Colors.redAccent
+                    )
+                );
+              }
+              return;
+            }
+            if (mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CreateTaskScreen(projectId: widget.projectId),
+                ),
+              );
+            }
+          },
+          child: const Icon(Icons.add),
       ),
     )
     );
@@ -380,7 +462,6 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
     _autoScrollTimer?.cancel();
   }
 
-  // dọn bộ nh khi out màn
   @override
   void dispose() {
     _autoScrollTimer?.cancel();

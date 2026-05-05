@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/task_entity.dart';
@@ -56,7 +57,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     }
   }
 
-  void _showAssigneePicker() {
+  Future<void> _showAssigneePicker() async {
     showModalBottomSheet(
       context: context,
       builder: (context) {
