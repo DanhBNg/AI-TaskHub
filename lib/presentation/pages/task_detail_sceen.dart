@@ -135,77 +135,78 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       context: context,
       isScrollControlled: true,
       builder: (context) {
-        // StatefulBuilder giúp form cập nhật được Ngày và Người ngay lập tức khi chọn
         return StatefulBuilder(
             builder: (context, setModalState) {
-              return Padding(
-                padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 24),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('Chỉnh sửa công việc', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 16),
-                      TextField(controller: editTitleController, decoration: const InputDecoration(labelText: 'Tên Task', border: OutlineInputBorder())),
-                      const SizedBox(height: 16),
-                      TextField(controller: editDescController, maxLines: 2, decoration: const InputDecoration(labelText: 'Mô tả', border: OutlineInputBorder())),
-                      const SizedBox(height: 16),
-
-                      // Sửa Deadline
-                      TextFormField(
-                        readOnly: true,
-                        onTap: () async {
-                          final picked = await showDatePicker(context: context, initialDate: editDueDate ?? DateTime.now(), firstDate: DateTime(2000), lastDate: DateTime(2030));
-                          if (picked != null) setModalState(() => editDueDate = picked);
-                        },
-                        decoration: const InputDecoration(labelText: 'Deadline', border: OutlineInputBorder(), suffixIcon: Icon(Icons.calendar_today)),
-                        controller: TextEditingController(text: editDueDate == null ? '' : '${editDueDate!.day}/${editDueDate!.month}/${editDueDate!.year}'),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Sửa Độ ưu tiên
-                      DropdownButtonFormField<String>(
-                        value: selectedPriority,
-                        decoration: const InputDecoration(labelText: 'Độ ưu tiên', border: OutlineInputBorder()),
-                        items: ['Low', 'Medium', 'High'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
-                        onChanged: (val) => setModalState(() => selectedPriority = val!),
-                      ),
-                      const SizedBox(height: 16),
-                      const Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text('Người thực hiện:', style: TextStyle(fontWeight: FontWeight.bold))
-                      ),
-                      const SizedBox(height: 8),
-                      // Gọi hàm vẽ Checkbox chọn người
-                      _buildMemberSelector(editAssigneeIds, editAssigneeNames, editAssigneeAvatars, setModalState),
-                      const SizedBox(height: 24),
-                      // Nút Lưu thay đổi
-                      SizedBox(
-                        width: double.infinity, height: 50,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            final updatedTask = TaskEntity(
-                              taskId: widget.task.taskId,
-                              projectId: widget.task.projectId,
-                              title: editTitleController.text.trim(),
-                              description: editDescController.text.trim(),
-                              status: widget.task.status,
-                              priority: selectedPriority,
-                              dueDate: editDueDate,
-                              assigneeIds: editAssigneeIds,
-                              assigneeNames: editAssigneeNames,
-                              assigneeAvatarUrls: editAssigneeAvatars,
-                              createdAt: widget.task.createdAt,
-                            );
-                            context.read<TaskBloc>().add(UpdateTask(updatedTask));
-                            Navigator.pop(context); // Đóng form
-                            Navigator.pop(context); // Quay về bảng Kanban
+              return SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Chỉnh sửa công việc', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 16),
+                        TextField(controller: editTitleController, decoration: const InputDecoration(labelText: 'Tên Task', border: OutlineInputBorder())),
+                        const SizedBox(height: 16),
+                        TextField(controller: editDescController, maxLines: 2, decoration: const InputDecoration(labelText: 'Mô tả', border: OutlineInputBorder())),
+                        const SizedBox(height: 16),
+                
+                        // Sửa Deadline
+                        TextFormField(
+                          readOnly: true,
+                          onTap: () async {
+                            final picked = await showDatePicker(context: context, initialDate: editDueDate ?? DateTime.now(), firstDate: DateTime(2000), lastDate: DateTime(2030));
+                            if (picked != null) setModalState(() => editDueDate = picked);
                           },
-                          child: const Text('Lưu Thay Đổi', style: TextStyle(fontSize: 16)),
+                          decoration: const InputDecoration(labelText: 'Deadline', border: OutlineInputBorder(), suffixIcon: Icon(Icons.calendar_today)),
+                          controller: TextEditingController(text: editDueDate == null ? '' : '${editDueDate!.day}/${editDueDate!.month}/${editDueDate!.year}'),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
+                        const SizedBox(height: 16),
+                
+                        // Sửa Độ ưu tiên
+                        DropdownButtonFormField<String>(
+                          value: selectedPriority,
+                          decoration: const InputDecoration(labelText: 'Độ ưu tiên', border: OutlineInputBorder()),
+                          items: ['Low', 'Medium', 'High'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                          onChanged: (val) => setModalState(() => selectedPriority = val!),
+                        ),
+                        const SizedBox(height: 16),
+                        const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text('Người thực hiện:', style: TextStyle(fontWeight: FontWeight.bold))
+                        ),
+                        const SizedBox(height: 8),
+                        // Gọi hàm vẽ Checkbox chọn người
+                        _buildMemberSelector(editAssigneeIds, editAssigneeNames, editAssigneeAvatars, setModalState),
+                        const SizedBox(height: 24),
+                        // Nút Lưu thay đổi
+                        SizedBox(
+                          width: double.infinity, height: 50,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              final updatedTask = TaskEntity(
+                                taskId: widget.task.taskId,
+                                projectId: widget.task.projectId,
+                                title: editTitleController.text.trim(),
+                                description: editDescController.text.trim(),
+                                status: widget.task.status,
+                                priority: selectedPriority,
+                                dueDate: editDueDate,
+                                assigneeIds: editAssigneeIds,
+                                assigneeNames: editAssigneeNames,
+                                assigneeAvatarUrls: editAssigneeAvatars,
+                                createdAt: widget.task.createdAt,
+                              );
+                              context.read<TaskBloc>().add(UpdateTask(updatedTask));
+                              Navigator.pop(context); // Đóng form
+                              Navigator.pop(context); // Quay về bảng Kanban
+                            },
+                            child: const Text('Lưu Thay Đổi', style: TextStyle(fontSize: 16)),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -328,12 +329,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           ),
         ),
         // NỘI DUNG TƯƠNG ỨNG CHO 3 TABS
-        body: TabBarView(
-          children: [
-            _buildDetailsTab(),       // Tab 1
-            _buildChatTab(),          // Tab 2
-            _buildAttachmentsTab(),   // Tab 3
-          ],
+        body: SafeArea(
+          child: TabBarView(
+            children: [
+              _buildDetailsTab(),       // Tab 1
+              _buildChatTab(),          // Tab 2
+              _buildAttachmentsTab(),   // Tab 3
+            ],
+          ),
         ),
       ),
     );

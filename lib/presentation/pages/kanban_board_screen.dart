@@ -39,75 +39,77 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.7,
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              const Text('Danh sách thành viên', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              Expanded(
-                child: StreamBuilder<DocumentSnapshot>(
-                  stream: FirebaseFirestore.instance.collection('PROJECTS').doc(widget.projectId).snapshots(),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-
-                    final data = snapshot.data!.data() as Map<String, dynamic>;
-                    final List<dynamic> memberIds = data['memberIds'] ?? [];
-                    final Map<String, dynamic> roles = data['roles'] ?? {};
-                    final String ownerId = data['ownerId'] ?? '';
-                    final bool isOwner = (FirebaseAuth.instance.currentUser?.uid == ownerId);
-
-                    return ListView.builder(
-                      itemCount: memberIds.length,
-                      itemBuilder: (context, index) {
-                        final uid = memberIds[index];
-                        final String roleName = (uid == ownerId)
-                            ? 'Chủ dự án'
-                            : (roles[uid] == 'Admin' ? 'Quản trị viên' : 'Thành viên');
-
-                        return FutureBuilder<DocumentSnapshot>(
-                          future: FirebaseFirestore.instance.collection('USERS').doc(uid).get(),
-                          builder: (context, userSnap) {
-                            if (!userSnap.hasData) return const SizedBox();
-                            final userData = userSnap.data!.data() as Map<String, dynamic>;
-                            final name = userData['fullName'] ?? 'Người dùng';
-                            final avatar = userData['avatarUrl'];
-
-                            return ListTile(
-                              leading: CircleAvatar(
-                                backgroundImage: avatar != null ? NetworkImage(avatar) : null,
-                                child: avatar == null ? Text(name[0].toUpperCase()) : null,
-                              ),
-                              title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                              subtitle: Text('Vai trò: $roleName', style: TextStyle(color: uid == ownerId ? Colors.red : Colors.blueAccent)),
-                              // logic hiện nuts
-                              trailing: (isOwner && uid != ownerId)
-                                  ? PopupMenuButton<String>(
-                                onSelected: (value) {
-                                  if (value == 'delete') {
-                                    _removeMember(uid, name);
-                                  } else {
-                                    _updateMemberRole(uid, value);
-                                  }
-                                },
-                                itemBuilder: (context) => [
-                                  const PopupMenuItem(value: 'Admin', child: Text('Gán quyền Admin')),
-                                  const PopupMenuItem(value: 'Member', child: Text('Gán quyền Member')),
-                                  const PopupMenuDivider(),
-                                  const PopupMenuItem(value: 'delete', child: Text('Xóa khỏi dự án', style: TextStyle(color: Colors.red))),
-                                ],
-                              )
-                                  : (uid == ownerId ? const Icon(Icons.star, color: Colors.amber) : null),
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
+        return SafeArea(
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.7,
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                const Text('Danh sách thành viên', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 20),
+                Expanded(
+                  child: StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance.collection('PROJECTS').doc(widget.projectId).snapshots(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          
+                      final data = snapshot.data!.data() as Map<String, dynamic>;
+                      final List<dynamic> memberIds = data['memberIds'] ?? [];
+                      final Map<String, dynamic> roles = data['roles'] ?? {};
+                      final String ownerId = data['ownerId'] ?? '';
+                      final bool isOwner = (FirebaseAuth.instance.currentUser?.uid == ownerId);
+          
+                      return ListView.builder(
+                        itemCount: memberIds.length,
+                        itemBuilder: (context, index) {
+                          final uid = memberIds[index];
+                          final String roleName = (uid == ownerId)
+                              ? 'Chủ dự án'
+                              : (roles[uid] == 'Admin' ? 'Quản trị viên' : 'Thành viên');
+          
+                          return FutureBuilder<DocumentSnapshot>(
+                            future: FirebaseFirestore.instance.collection('USERS').doc(uid).get(),
+                            builder: (context, userSnap) {
+                              if (!userSnap.hasData) return const SizedBox();
+                              final userData = userSnap.data!.data() as Map<String, dynamic>;
+                              final name = userData['fullName'] ?? 'Người dùng';
+                              final avatar = userData['avatarUrl'];
+          
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundImage: avatar != null ? NetworkImage(avatar) : null,
+                                  child: avatar == null ? Text(name[0].toUpperCase()) : null,
+                                ),
+                                title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Text('Vai trò: $roleName', style: TextStyle(color: uid == ownerId ? Colors.red : Colors.blueAccent)),
+                                // logic hiện nuts
+                                trailing: (isOwner && uid != ownerId)
+                                    ? PopupMenuButton<String>(
+                                  onSelected: (value) {
+                                    if (value == 'delete') {
+                                      _removeMember(uid, name);
+                                    } else {
+                                      _updateMemberRole(uid, value);
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(value: 'Admin', child: Text('Gán quyền Admin')),
+                                    const PopupMenuItem(value: 'Member', child: Text('Gán quyền Member')),
+                                    const PopupMenuDivider(),
+                                    const PopupMenuItem(value: 'delete', child: Text('Xóa khỏi dự án', style: TextStyle(color: Colors.red))),
+                                  ],
+                                )
+                                    : (uid == ownerId ? const Icon(Icons.star, color: Colors.amber) : null),
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
