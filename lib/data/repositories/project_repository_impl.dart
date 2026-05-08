@@ -31,12 +31,10 @@ class ProjectRepositoryImpl implements ProjectRepository {
 
   @override
   Future<void> updateProject(ProjectEntity project) async {
-    // Implement later cho chức năng sửa
   }
 
   @override
   Future<void> deleteProject(String projectId) async {
-    // Implement later cho chức năng xóa
   }
 
   @override
@@ -46,7 +44,6 @@ class ProjectRepositoryImpl implements ProjectRepository {
 
   @override
   Stream<List<InviteEntity>> getPendingInvites(String userId) {
-    // Gọi Data Source (nó trả về Model, nhưng vì Model kế thừa Entity nên hợp lệ)
     return remoteDataSource.getPendingInvites(userId);
   }
 

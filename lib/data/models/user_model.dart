@@ -10,7 +10,6 @@ class UserModel extends UserEntity {
     super.systemRole,
   });
 
-  // Hàm chuyển từ Firebase Document (JSON) sang Model
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return UserModel(
@@ -22,14 +21,13 @@ class UserModel extends UserEntity {
     );
   }
 
-  // Hàm chuyển từ Model thành JSON để đẩy lên Firestore
   Map<String, dynamic> toJson() {
     return {
       'email': email,
       'fullName': fullName,
       'avatarUrl': avatarUrl,
       'systemRole': systemRole,
-      'createdAt': FieldValue.serverTimestamp(), // Tự động lấy giờ server
+      'createdAt': FieldValue.serverTimestamp(),
     };
   }
 }

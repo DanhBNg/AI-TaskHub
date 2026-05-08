@@ -20,17 +20,17 @@ class _CreateProjectScreenState extends State<CreateProjectScreen> {
 
     final userId = FirebaseAuth.instance.currentUser!.uid;
     final newProject = ProjectEntity(
-      projectId: '', // Firebase sẽ tự tạo
+      projectId: '',
       name: _nameController.text.trim(),
       description: _descController.text.trim(),
       ownerId: userId,
-      memberIds: [userId], // Thêm chính mình vào danh sách thành viên
-      roles: {userId: 'owner'}, // Mình là chủ dự án
+      memberIds: [userId],
+      roles: {userId: 'owner'},
       createdAt: DateTime.now(),
     );
 
     context.read<ProjectBloc>().add(CreateProject(newProject));
-    Navigator.pop(context); // Trở về Dashboard
+    Navigator.pop(context);
   }
 
   @override

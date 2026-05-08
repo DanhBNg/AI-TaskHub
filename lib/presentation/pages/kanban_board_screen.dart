@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -11,7 +10,6 @@ import '../state/task_bloc.dart';
 import 'create_task_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class KanbanBoardScreen extends StatefulWidget {
   final String projectId;
@@ -117,7 +115,7 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
   }
   Future<void> _updateMemberRole(String uid, String newRole) async {
     await FirebaseFirestore.instance.collection('PROJECTS').doc(widget.projectId).update({
-      'roles.$uid': newRole, // Cập nhật trực tiếp vào Map roles
+      'roles.$uid': newRole,
     });
   }
 
@@ -146,7 +144,6 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
   }
 
   void _showEditProjectModal(BuildContext context) async {
-    // Lấy dữ liệu dự án hiện tại từ Firebase
     final doc = await FirebaseFirestore.instance.collection('PROJECTS').doc(widget.projectId).get();
     if (!doc.exists) return;
 
@@ -159,13 +156,13 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
 
     if (!context.mounted) return;
 
-    // 4. Mở hộp thoại
+    // Mở hộp thoại
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Chỉnh sửa dự án'),
         content: Column(
-          mainAxisSize: MainAxisSize.min, // Để Dialog không bị dài ngoằng
+          mainAxisSize: MainAxisSize.min, //Dialog không bị dài
           children: [
             TextField(
                 controller: nameController,
@@ -185,7 +182,6 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
             onPressed: () async {
               if (nameController.text.trim().isEmpty) return;
 
-              // Cập nhật cả name và description lên Firebase
               await FirebaseFirestore.instance.collection('PROJECTS').doc(widget.projectId).update({
                 'name': nameController.text.trim(),
                 'description': descController.text.trim(),
@@ -216,8 +212,8 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
             onPressed: () async {
               await FirebaseFirestore.instance.collection('PROJECTS').doc(widget.projectId).delete();
 
-              Navigator.pop(ctx); // Đóng hộp thoại
-              Navigator.pop(context); // Quay về Dashboard
+              Navigator.pop(ctx);
+              Navigator.pop(context);
             },
             child: const Text('Xóa vĩnh viễn', style: TextStyle(color: Colors.white)),
           ),
@@ -294,7 +290,6 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
                             assigneeIds: [], assigneeNames: [], assigneeAvatarUrls: [],
                             createdAt: DateTime.now(),
                           );
-                          // Gọi Bloc để tạo Task (như cách bạn vẫn làm)
                           context.read<TaskBloc>().add(CreateTask(newTask));
                         }
 
@@ -418,7 +413,7 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
     );
   }
 
-  // 1. Kiểm tra xem ngón tay có đang ở sát mép màn hình không
+  // Kiểm tra xem ngón tay có đang ở sát mép màn hình không
   void _checkAutoScroll(Offset globalPosition) {
     final screenWidth = MediaQuery.of(context).size.width;
 
@@ -434,7 +429,7 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
     }
   }
 
-  // 2. Kích hoạt động cơ cuộn liên tục bằng Timer
+  // Kích hoạt cuộn liên tục bằng Timer
   void _startAutoScroll(double direction) {
     if (_autoScrollTimer != null && _autoScrollTimer!.isActive) return;
 
@@ -454,12 +449,11 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
         return;
       }
 
-      // Nhảy pixel tạo cảm giác cuộn mượt mà
+      // Nhảy pixel tạo cảm giác cuộn mượt
       _boardScrollController.jumpTo(newOffset);
     });
   }
 
-  // 3. Phanh lại khi thả tay
   void _stopAutoScroll() {
     _autoScrollTimer?.cancel();
   }
@@ -499,7 +493,7 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
                   context.read<ProjectBloc>().add(
                       AddMember(widget.projectId, emailController.text.trim())
                   );
-                  Navigator.pop(dialogContext); // Đóng hộp thoại
+                  Navigator.pop(dialogContext);
                 }
               },
               child: const Text('Thêm'),

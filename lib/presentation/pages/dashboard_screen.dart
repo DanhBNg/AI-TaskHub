@@ -1,16 +1,12 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:taskhub_ai/presentation/pages/message_list_screen.dart';
-import 'package:taskhub_ai/presentation/pages/profile_screen.dart';
 import '../../domain/entities/invite_entity.dart';
 import '../state/invite_bloc.dart';
 import '../state/project_bloc.dart';
 import '../widgets/app_drawer.dart';
 import 'create_project_screen.dart';
 import 'kanban_board_screen.dart';
-import 'login_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -68,96 +64,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       drawer: const AppDrawer(currentIndex: 0),
-      // drawer: Drawer(
-      //   child: ListView(
-      //     padding: EdgeInsets.zero,
-      //     children: [
-      //       // Phần 1: Header chứa Avatar và Tên (Đã thêm StreamBuilder để tự cập nhật)
-      //       StreamBuilder<DocumentSnapshot>(
-      //         stream: FirebaseFirestore.instance
-      //             .collection('USERS')
-      //             .doc(FirebaseAuth.instance.currentUser?.uid)
-      //             .snapshots(),
-      //         builder: (context, snapshot) {
-      //           // Đang tải hoặc lỗi thì hiện khung trống mặc định
-      //           if (!snapshot.hasData || !snapshot.data!.exists) {
-      //             return const UserAccountsDrawerHeader(
-      //               decoration: BoxDecoration(color: Colors.blueAccent),
-      //               accountName: Text('Đang tải...'),
-      //               accountEmail: Text(''),
-      //               currentAccountPicture: CircleAvatar(backgroundColor: Colors.white),
-      //             );
-      //           }
-      //
-      //           // Đã có dữ liệu từ bảng USERS
-      //           final userData = snapshot.data!.data() as Map<String, dynamic>;
-      //
-      //           // Ưu tiên lấy Tên trong Database -> Nếu không có thì lấy tên Email trước @
-      //           final email = userData['email'] ?? FirebaseAuth.instance.currentUser?.email ?? '';
-      //           final displayName = userData['fullName'] ?? email.split('@')[0];
-      //           final avatarUrl = userData['avatarUrl'];
-      //
-      //           return UserAccountsDrawerHeader(
-      //             decoration: const BoxDecoration(color: Colors.blueAccent),
-      //             accountName: Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-      //             accountEmail: Text(email),
-      //             currentAccountPicture: CircleAvatar(
-      //               backgroundColor: Colors.white,
-      //               backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
-      //               // Ảnh trắng + chữ cái đầu viết hoa
-      //               child: avatarUrl == null
-      //                   ? Text(
-      //                 displayName[0].toUpperCase(),
-      //                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blueAccent),
-      //               )
-      //                   : null,
-      //             ),
-      //           );
-      //         },
-      //       ),
-      //
-      //       //  Các nút chức năng
-      //       ListTile(
-      //         leading: const Icon(Icons.dashboard, color: Colors.blue),
-      //         title: const Text('Dashboard'),
-      //         onTap: () {
-      //           Navigator.pop(context);
-      //         },
-      //       ),
-      //       ListTile(
-      //         leading: const Icon(Icons.chat_bubble, color: Colors.green),
-      //         title: const Text('Tin nhắn'),
-      //         onTap: () {
-      //           Navigator.pop(context);
-      //           Navigator.push(context, MaterialPageRoute(builder: (_) => const MessageListScreen(projectId: '',)));
-      //         },
-      //       ),
-      //       const Divider(),
-      //       ListTile(
-      //         leading: const Icon(Icons.person, color: Colors.green),
-      //         title: const Text('Thông tin cá nhân'),
-      //         onTap: () {
-      //           Navigator.pop(context);
-      //           Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
-      //         },
-      //       ),
-      //       const Divider(),
-      //       ListTile(
-      //         leading: const Icon(Icons.logout, color: Colors.red),
-      //         title: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),
-      //         onTap: () async {
-      //           await FirebaseAuth.instance.signOut();
-      //           if (context.mounted) {
-      //             Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
-      //           }
-      //         },
-      //       ),
-      //     ],
-      //   ),
-      // ),
       body: BlocBuilder<ProjectBloc, ProjectState>(
         builder: (context, state) {
-          // đang tải dữ liệu
           if (state is ProjectLoading) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -174,7 +82,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             );
           }
-          // Trạng thái đã tải xong dữ liệu thành công
           else if (state is ProjectLoaded) {
 
             // Xử lý khi chưa có dự án
@@ -217,7 +124,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             );
           }
 
-          // Trạng thái dự phòng
           return const SizedBox();
         },
       ),

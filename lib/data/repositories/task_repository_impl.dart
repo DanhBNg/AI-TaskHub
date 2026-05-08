@@ -27,7 +27,6 @@ class TaskRepositoryImpl implements TaskRepository {
       assigneeAvatarUrls: task.assigneeAvatarUrls,
       createdAt: task.createdAt,
     );
-    // Data Source gọi Firebase
     await remoteDataSource.createTask(taskModel);
   }
 
@@ -40,7 +39,6 @@ class TaskRepositoryImpl implements TaskRepository {
 
   @override
   Future<void> updateTask(TaskEntity task) async {
-    // Chuyển đổi từ Entity (Logic) sang Model (Data) trước khi gửi đi
     final taskModel = TaskModel(
       taskId: task.taskId,
       projectId: task.projectId,
@@ -55,7 +53,6 @@ class TaskRepositoryImpl implements TaskRepository {
       createdAt: task.createdAt,
     );
 
-    // Đẩy Model xuống Remote Data Source để cập nhật lên Firestore
     await remoteDataSource.updateTask(taskModel);
   }
 

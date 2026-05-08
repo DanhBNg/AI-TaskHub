@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/task_entity.dart';
@@ -31,7 +30,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       projectId: widget.projectId,
       title: _titleController.text.trim(),
       description: _descController.text.trim(),
-      status: 'todo', // Trạng thái mặc định
+      status: 'todo',
       priority: _selectedPriority,
       dueDate: _selectedDueDate,
       assigneeIds: _selectedAssigneeIds,
@@ -73,7 +72,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               builder: (context, userSnap) {
                 if (!userSnap.hasData) return const Center(child: CircularProgressIndicator());
 
-                // Dùng StatefulBuilder để Checkbox có thể update UI ngay trong BottomSheet
+                // StatefulBuilder để Checkbox update UI ngay trong BottomSheet
                 return StatefulBuilder(
                     builder: (context, setModalState) {
                       return ListView.builder(
@@ -158,7 +157,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             ),
             const SizedBox(height: 16),
 
-            // CHỌN NHIỀU THÀNH VIÊN
+            // list phân công
             ListTile(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: Colors.grey.shade400)),
               leading: const Icon(Icons.group_add, color: Colors.blue),
