@@ -17,7 +17,6 @@ class AppDrawer extends StatelessWidget {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          // Phần 1: Header StreamBuilder (Giữ nguyên code xịn của bạn)
           StreamBuilder<DocumentSnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('USERS')
@@ -53,7 +52,7 @@ class AppDrawer extends StatelessWidget {
             },
           ),
 
-          // Phần 2: Các nút chức năng (Dùng hàm _buildMenuItem để tự động bôi đậm)
+          // các nút chức năng
           _buildMenuItem(
             context,
             icon: Icons.dashboard,
@@ -80,7 +79,7 @@ class AppDrawer extends StatelessWidget {
 
           const Divider(),
 
-          // Nút Đăng xuất
+          // log out
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
             title: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),

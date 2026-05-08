@@ -8,7 +8,6 @@ import '../../presentation/state/message_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../state/task_bloc.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -59,7 +58,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
 
     if (pickedFile != null && currentUser != null) {
-      // ĐỌC ẢNH DƯỚI DẠNG MẢNG BYTE
       final imageBytes = await pickedFile.readAsBytes();
 
       final newMessage = MessageEntity(
@@ -70,7 +68,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         content: 'Đã gửi một hình ảnh', timestamp: DateTime.now(),
       );
 
-      // Gửi event lên BLoC kèm theo Mảng Byte
       context.read<MessageBloc>().add(SendMessage(newMessage, imageBytes: imageBytes));
       FirebaseFirestore.instance.collection('TASKS').doc(widget.task.taskId).update({
         'lastMessage': 'Đã gửi một hình ảnh',
@@ -105,10 +102,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
-              // Gọi Event Xóa
               context.read<TaskBloc>().add(DeleteTask(widget.task.taskId));
-              Navigator.pop(ctx); // Đóng Dialog
-              Navigator.pop(context); // Thoát khỏi màn hình Detail về bảng Kanban
+              Navigator.pop(ctx);
+              Navigator.pop(context);
             },
             child: const Text('Xóa', style: TextStyle(color: Colors.white)),
           ),
@@ -176,10 +172,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             child: Text('Người thực hiện:', style: TextStyle(fontWeight: FontWeight.bold))
                         ),
                         const SizedBox(height: 8),
-                        // Gọi hàm vẽ Checkbox chọn người
                         _buildMemberSelector(editAssigneeIds, editAssigneeNames, editAssigneeAvatars, setModalState),
                         const SizedBox(height: 24),
-                        // Nút Lưu thay đổi
                         SizedBox(
                           width: double.infinity, height: 50,
                           child: ElevatedButton(
@@ -198,8 +192,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                 createdAt: widget.task.createdAt,
                               );
                               context.read<TaskBloc>().add(UpdateTask(updatedTask));
-                              Navigator.pop(context); // Đóng form
-                              Navigator.pop(context); // Quay về bảng Kanban
+                              Navigator.pop(context);
+                              Navigator.pop(context);
                             },
                             child: const Text('Lưu Thay Đổi', style: TextStyle(fontSize: 16)),
                           ),
@@ -309,10 +303,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Bao bọc toàn bộ Scaffold bằng DefaultTabController
     return DefaultTabController(
       initialIndex: widget.initialTabIndex,
-      length: 3, // Khai báo có 3 Tab
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.task.title),
@@ -328,7 +321,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             ],
           ),
         ),
-        // NỘI DUNG TƯƠNG ỨNG CHO 3 TABS
         body: SafeArea(
           child: TabBarView(
             children: [
@@ -342,7 +334,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
   }
 
-  // ================= TAB 1: CHI TIẾT TASK =================
+  // TAB 1: chi tiết task
   Widget _buildDetailsTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -370,7 +362,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Thông tin người nhận và Deadline (Giao diện chuẩn bị sẵn cho DB mới)
+          // Thông tin người nhận và Deadline
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: const CircleAvatar(child: Icon(Icons.person)),
@@ -444,7 +436,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
   }
 
-  // ================= TAB 2: THẢO LUẬN (CHAT) =================
+  // TAB 2: Chat
   Widget _buildChatTab() {
     return Column(
       children: [
@@ -482,19 +474,16 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           child: BlocBuilder<MessageBloc, MessageState>(
             builder: (context, state) {
               if (state is MessageLoading) return const Center(child: CircularProgressIndicator());
-
-              // THÊM DÒNG NÀY ĐỂ BẮT LỖI
               if (state is MessageError) return Center(child: Text('Lỗi: ${state.error}', style: const TextStyle(color: Colors.red)));
               if (state is MessageLoaded) {
-                // 1. Đảo ngược danh sách tin nhắn để cái mới nhất nằm ở vị trí đầu tiên
+                // 1. Đảo ngược danh sách tin nhắn để cái mới nhất lên
                 final reversedMessages = state.messages.reversed.toList();
 
                 return ListView.builder(
-                  reverse: true, // 2. QUAN TRỌNG: Lật ngược danh sách từ dưới lên trên
+                  reverse: true, //Lật ngược danh sách từ dưới lên trên
                   padding: const EdgeInsets.all(16),
                   itemCount: reversedMessages.length,
                   itemBuilder: (context, index) {
-                    // 3. Sử dụng danh sách đã đảo ngược
                     final msg = reversedMessages[index];
                     final isMe = msg.senderId == currentUser?.uid;
 
@@ -504,7 +493,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          // NẾU LÀ NGƯỜI KHÁC -> HIỆN AVATAR BÊN TRÁI
+                          // ng khaccs thì hiện avt bên trái
                           if (!isMe) ...[
                             CircleAvatar(
                               radius: 16,
@@ -517,7 +506,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             const SizedBox(width: 8),
                           ],
 
-                          // KHUNG TIN NHẮN (BONG BÓNG)
+                          //khung chat
                           Flexible(
                             child: Container(
                               padding: const EdgeInsets.all(12),
@@ -597,7 +586,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   // Hàm xử lý upload file
   Future<void> _uploadFile() async {
-    // 1. Dùng withData: true để Web có thể đọc được fileBytes
     FilePickerResult? result = await FilePicker.pickFiles(
       type: FileType.any,
       withData: true,
@@ -621,14 +609,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     }
 
     try {
-      // 2. Upload lên Firebase Storage
+      // Upload lên Firebase Storage
       final storageRef = FirebaseStorage.instance.ref().child('task_attachments/${widget.task.taskId}/$fileName');
 
       // Khai báo ContentType rỗng để Firebase tự động nhận diện (Word, Excel, PDF...)
       await storageRef.putData(fileBytes, SettableMetadata(contentType: 'application/octet-stream'));
       final downloadUrl = await storageRef.getDownloadURL();
 
-      // 3. Cập nhật thẳng vào mảng 'attachments' của Task trên Firestore
+      // Cập nhật thẳng vào mảng 'attachments' của Task trên Firestore
       await FirebaseFirestore.instance.collection('TASKS').doc(widget.task.taskId).update({
         'attachments': FieldValue.arrayUnion([
           {'name': fileName, 'url': downloadUrl}
@@ -645,8 +633,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     }
   }
 
-  // ================= TAB 3: ĐÍNH KÈM FILE =================
-  // ================= TAB 3: ĐÍNH KÈM FILE =================
+  // TAB 3: file
   Widget _buildAttachmentsTab() {
     return Column(
       children: [
@@ -730,7 +717,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                         style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                                         onPressed: () {
                                           Navigator.pop(ctx);
-                                          _deleteFile(file); // Gọi hàm xóa mà chúng ta đã viết trước đó
+                                          _deleteFile(file);
                                         },
                                         child: const Text('Xóa', style: TextStyle(color: Colors.white)),
                                       ),
@@ -764,7 +751,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
   }
 
-  // Hàm hiển thị danh sách chọn người trong Modal
   Widget _buildMemberSelector(List<String> ids, List<String> names, List<String> avatars, StateSetter setModalState) {
     return FutureBuilder<DocumentSnapshot>(
       future: FirebaseFirestore.instance.collection('PROJECTS').doc(widget.task.projectId).get(),

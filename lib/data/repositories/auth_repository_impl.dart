@@ -10,8 +10,6 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Stream<UserEntity?> get authStateChanges {
-    // Lắng nghe thay đổi, nếu có user thì cố gắng lấy data từ Firestore (có thể mở rộng sau)
-    // Ở mức cơ bản, ta chỉ cần biết có uid là đã đăng nhập
     return remoteDataSource.authStateChanges.map((firebaseUser) {
       if (firebaseUser == null) return null;
       return UserEntity(
@@ -25,10 +23,8 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<UserEntity> signInWithEmail(String email, String password) async {
     try {
-      // Gọi xuống Data Source và trả về Entity cho Domain
       return await remoteDataSource.signInWithEmail(email, password);
     } on FirebaseAuthException catch (e) {
-      // Chuyển đổi mã lỗi Firebase thành thông báo thân thiện
       throw Exception(_handleFirebaseAuthError(e.code));
     } catch (e) {
       throw Exception('Đã xảy ra lỗi không xác định: $e');
@@ -51,7 +47,6 @@ class AuthRepositoryImpl implements AuthRepository {
     await remoteDataSource.signOut();
   }
 
-  // Hàm tiện ích: Dịch lỗi Firebase sang Tiếng Việt
   String _handleFirebaseAuthError(String errorCode) {
     switch (errorCode) {
       case 'user-not-found':
