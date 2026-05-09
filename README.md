@@ -1,10 +1,10 @@
 # TaskHub AI 🚀
 
-TaskHub AI là một ứng dụng quản lý dự án và công việc đa nền tảng (Mobile & Web), được thiết kế để tối ưu hóa hiệu suất làm việc nhóm thông qua bảng Kanban trực quan và sức mạnh của Trí tuệ nhân tạo (Google Gemini).
+TaskHub AI là một ứng dụng quản lý dự án công nghệ đa nền tảng (Mobile & Web), được thiết kế để tối ưu hóa hiệu suất làm việc nhóm thông qua bảng Kanban trực quan và sự hỗ trợ của AI.
 
 🔗 **Live Demo:** [https://ai-project-manager-12d8d.web.app/]
 
-## ✨ Tính năng nổi bật
+##  Tính năng nổi bật
 
 ### 🧠 Tích hợp AI (Google Gemini)
 * **AI Task Generator:** Tự động phân tích yêu cầu (prompt) và chia nhỏ thành các thẻ công việc (Task) chi tiết.
