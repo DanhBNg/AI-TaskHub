@@ -9,9 +9,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../state/task_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'ai_assistant_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   final TaskEntity task;
@@ -210,19 +211,49 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
   }
 
+  void _openAssistantWithTaskContext(List<MessageEntity> messages) {
+    final assistantContext = {
+      'source': 'task_detail',
+      'task': {
+        'taskId': widget.task.taskId,
+        'projectId': widget.task.projectId,
+        'title': widget.task.title,
+        'description': widget.task.description,
+        'status': widget.task.status,
+        'priority': widget.task.priority,
+        'dueDate': widget.task.dueDate?.toIso8601String(),
+        'assigneeNames': widget.task.assigneeNames,
+      },
+      'messages': messages.map((m) => {
+        'sender': m.senderName,
+        'content': m.content,
+        'timestamp': m.timestamp.toIso8601String(),
+      }).toList(),
+    };
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AiAssistantScreen(
+          projectId: widget.task.projectId,
+          initialContext: assistantContext,
+        ),
+      ),
+    );
+  }
+
   bool _isSummarizing = false;
 
   Future<void> _summarizeChat(List<MessageEntity> messages) async {
     if (messages.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Chưa có tin nhắn nào để tóm tắt')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Chưa có tin nhắn nào để tóm tắt.')));
       return;
     }
 
     setState(() => _isSummarizing = true);
 
     try {
-      // Nhặt tên người gửi và nội dung để ném cho Node.js
-      final chatData = messages.map((m) => {
+      final List<Map<String, String>> chatLog = messages.map((m) => {
         'sender': m.senderName,
         'content': m.content
       }).toList();
@@ -230,47 +261,30 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       final response = await http.post(
         Uri.parse('https://taskhub-backend-ords.onrender.com/api/summarize-chat'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'messages': chatData}),
+        body: jsonEncode({'messages': chatLog}),
       );
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        _showSummaryDialog(data['summary']);
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(children: [Icon(Icons.auto_awesome, color: Colors.orange), SizedBox(width: 8), Text('Tóm tắt hội thoại')]),
+              content: SingleChildScrollView(child: Text(data['summary'] ?? '')),
+              actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Đóng'))],
+            ),
+          );
+        }
       } else {
-        final errorData = jsonDecode(response.body);
-        throw Exception(errorData['error'] ?? 'Lỗi không xác định từ Server');
+        throw Exception('Server trả về lỗi');
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi gọi AI: $e')));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi tóm tắt: $e'), backgroundColor: Colors.red));
     } finally {
       setState(() => _isSummarizing = false);
     }
-  }
-
-  void _showSummaryDialog(String summary) {
-    showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
-            children: [
-              Icon(Icons.auto_awesome, color: Colors.purple),
-              SizedBox(width: 8),
-              Text('Tóm tắt Chat', style: TextStyle(color: Colors.purple)),
-            ],
-          ),
-          // Dùng SingleChildScrollView để đoạn tóm tắt dài không bị tràn màn hình
-          content: SingleChildScrollView(child: Text(summary, style: const TextStyle(fontSize: 15, height: 1.5))),
-          actions: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Đã hiểu', style: TextStyle(color: Colors.white)),
-            )
-          ],
-        )
-    );
   }
 
   Future<void> _deleteFile(Map<String, dynamic> fileData) async {
@@ -449,23 +463,38 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
               return Padding(
                 padding: const EdgeInsets.all(8.0),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple.shade50,
-                      elevation: 0,
-                      side: BorderSide(color: Colors.purple.shade200),
+                child: Row(
+                  children: [
+                    // Nút Tóm tắt (Phím tắt cũ)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange.shade50,
+                          elevation: 0,
+                          side: BorderSide(color: Colors.orange.shade200),
+                        ),
+                        icon: _isSummarizing 
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange))
+                            : const Icon(Icons.summarize, color: Colors.orange),
+                        label: const Text('Tóm tắt', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                        onPressed: _isSummarizing ? null : () => _summarizeChat(currentMessages),
+                      ),
                     ),
-                    icon: _isSummarizing
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.purple))
-                        : const Icon(Icons.auto_awesome, color: Colors.purple),
-                    label: Text(
-                        _isSummarizing ? 'AI đang đọc tin nhắn...' : 'Tóm tắt nội dung Chat',
-                        style: const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold)
+                    const SizedBox(width: 8),
+                    // Nút gọi Trợ lý AI (Hub tập trung)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple.shade50,
+                          elevation: 0,
+                          side: BorderSide(color: Colors.purple.shade200),
+                        ),
+                        icon: const Icon(Icons.auto_awesome, color: Colors.purple),
+                        label: const Text('Hỏi Trợ lý', style: TextStyle(color: Colors.purple, fontWeight: FontWeight.bold)),
+                        onPressed: () => _openAssistantWithTaskContext(currentMessages),
+                      ),
                     ),
-                    onPressed: _isSummarizing ? null : () => _summarizeChat(currentMessages),
-                  ),
+                  ],
                 ),
               );
             }
