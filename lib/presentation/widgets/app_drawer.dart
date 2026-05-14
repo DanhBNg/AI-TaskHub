@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../pages/ai_assistant_screen.dart';
 import '../pages/dashboard_screen.dart';
 import '../pages/login_screen.dart';
 import '../pages/message_list_screen.dart';
@@ -71,9 +72,17 @@ class AppDrawer extends StatelessWidget {
 
           _buildMenuItem(
             context,
+            icon: Icons.auto_awesome,
+            title: 'Trợ lý AI', 
+            index: 2,
+            targetScreen: const AiAssistantScreen(),
+          ),
+
+          _buildMenuItem(
+            context,
             icon: Icons.person,
             title: 'Thông tin cá nhân',
-            index: 2,
+            index: 3,
             targetScreen: const ProfileScreen(),
           ),
 
