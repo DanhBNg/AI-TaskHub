@@ -55,10 +55,8 @@ class ProjectRemoteDataSourceImpl implements ProjectRemoteDataSource {
     List<dynamic> currentMembers = projectDoc.data()?['memberIds'] ?? [];
     if (currentMembers.contains(receiverId)) throw Exception('Người này đã là thành viên của dự án!');
 
-    // Lấy thông tin người gử
     final currentUser = FirebaseAuth.instance.currentUser!;
 
-      //chỉ gửi 1 lần
     final existingInvite = await firestore.collection('INVITATIONS')
         .where('projectId', isEqualTo: projectId)
         .where('receiverId', isEqualTo: receiverId)
@@ -70,7 +68,6 @@ class ProjectRemoteDataSourceImpl implements ProjectRemoteDataSource {
       throw Exception('Bạn đã gửi lời mời cho người này rồi, vui lòng chờ họ đồng ý!');
     }
 
-    // Ghi vào bảng INVITATIONS thay vì cho thẳng vào PROJECTS
     await firestore.collection('INVITATIONS').doc().set({
       'projectId': projectId,
       'projectName': projectDoc.data()?['name'] ?? 'Dự án',
@@ -81,7 +78,6 @@ class ProjectRemoteDataSourceImpl implements ProjectRemoteDataSource {
     });
   }
 
-  // 2. Thêm hàm Lấy danh sách lời mời chờ duyệt
   @override
   Stream<List<InviteModel>> getPendingInvites(String userId) {
     return firestore.collection('INVITATIONS')
@@ -89,20 +85,17 @@ class ProjectRemoteDataSourceImpl implements ProjectRemoteDataSource {
         .where('status', isEqualTo: 'pending')
         .snapshots()
         .map((snapshot) {
-      // Khai báo rõ List<InviteModel> để Dart không bị nhầm lẫn null
+
       List<InviteModel> invites = snapshot.docs.map((doc) => InviteModel.fromFirestore(doc)).toList();
 
-      // Khai báo rõ kiểu (InviteModel a, InviteModel b) để tránh báo lỗi createdAt null
       invites.sort((InviteModel a, InviteModel b) => b.createdAt.compareTo(a.createdAt));
 
       return invites;
     });
   }
 
-  // 3. Đồng ý / Từ chối
   Future<void> respondToInvite(String inviteId, String projectId, String userId, bool isAccept) async {
     if (isAccept) {
-      // Nếu đồng ý, đẩy userId vào danh sách dự án
       await firestore.collection('PROJECTS').doc(projectId).update({
         'memberIds': FieldValue.arrayUnion([userId]),
         'roles.$userId': 'member',

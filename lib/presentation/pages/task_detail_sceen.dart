@@ -8,11 +8,11 @@ import '../../presentation/state/message_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../state/task_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'ai_assistant_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
 
 class TaskDetailScreen extends StatefulWidget {
   final TaskEntity task;
@@ -59,7 +59,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
 
     if (pickedFile != null && currentUser != null) {
-      // ĐỌC ẢNH DƯỚI DẠNG MẢNG BYTE
       final imageBytes = await pickedFile.readAsBytes();
 
       final newMessage = MessageEntity(
@@ -70,7 +69,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         content: 'Đã gửi một hình ảnh', timestamp: DateTime.now(),
       );
 
-      // Gửi event lên BLoC kèm theo Mảng Byte
       context.read<MessageBloc>().add(SendMessage(newMessage, imageBytes: imageBytes));
       FirebaseFirestore.instance.collection('TASKS').doc(widget.task.taskId).update({
         'lastMessage': 'Đã gửi một hình ảnh',
@@ -105,10 +103,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
-              // Gọi Event Xóa
               context.read<TaskBloc>().add(DeleteTask(widget.task.taskId));
-              Navigator.pop(ctx); // Đóng Dialog
-              Navigator.pop(context); // Thoát khỏi màn hình Detail về bảng Kanban
+              Navigator.pop(ctx);
+              Navigator.pop(context);
             },
             child: const Text('Xóa', style: TextStyle(color: Colors.white)),
           ),
@@ -135,77 +132,76 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       context: context,
       isScrollControlled: true,
       builder: (context) {
-        // StatefulBuilder giúp form cập nhật được Ngày và Người ngay lập tức khi chọn
         return StatefulBuilder(
             builder: (context, setModalState) {
-              return Padding(
-                padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 24),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('Chỉnh sửa công việc', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 16),
-                      TextField(controller: editTitleController, decoration: const InputDecoration(labelText: 'Tên Task', border: OutlineInputBorder())),
-                      const SizedBox(height: 16),
-                      TextField(controller: editDescController, maxLines: 2, decoration: const InputDecoration(labelText: 'Mô tả', border: OutlineInputBorder())),
-                      const SizedBox(height: 16),
-
-                      // Sửa Deadline
-                      TextFormField(
-                        readOnly: true,
-                        onTap: () async {
-                          final picked = await showDatePicker(context: context, initialDate: editDueDate ?? DateTime.now(), firstDate: DateTime(2000), lastDate: DateTime(2030));
-                          if (picked != null) setModalState(() => editDueDate = picked);
-                        },
-                        decoration: const InputDecoration(labelText: 'Deadline', border: OutlineInputBorder(), suffixIcon: Icon(Icons.calendar_today)),
-                        controller: TextEditingController(text: editDueDate == null ? '' : '${editDueDate!.day}/${editDueDate!.month}/${editDueDate!.year}'),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Sửa Độ ưu tiên
-                      DropdownButtonFormField<String>(
-                        value: selectedPriority,
-                        decoration: const InputDecoration(labelText: 'Độ ưu tiên', border: OutlineInputBorder()),
-                        items: ['Low', 'Medium', 'High'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
-                        onChanged: (val) => setModalState(() => selectedPriority = val!),
-                      ),
-                      const SizedBox(height: 16),
-                      const Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text('Người thực hiện:', style: TextStyle(fontWeight: FontWeight.bold))
-                      ),
-                      const SizedBox(height: 8),
-                      // Gọi hàm vẽ Checkbox chọn người
-                      _buildMemberSelector(editAssigneeIds, editAssigneeNames, editAssigneeAvatars, setModalState),
-                      const SizedBox(height: 24),
-                      // Nút Lưu thay đổi
-                      SizedBox(
-                        width: double.infinity, height: 50,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            final updatedTask = TaskEntity(
-                              taskId: widget.task.taskId,
-                              projectId: widget.task.projectId,
-                              title: editTitleController.text.trim(),
-                              description: editDescController.text.trim(),
-                              status: widget.task.status,
-                              priority: selectedPriority,
-                              dueDate: editDueDate,
-                              assigneeIds: editAssigneeIds,
-                              assigneeNames: editAssigneeNames,
-                              assigneeAvatarUrls: editAssigneeAvatars,
-                              createdAt: widget.task.createdAt,
-                            );
-                            context.read<TaskBloc>().add(UpdateTask(updatedTask));
-                            Navigator.pop(context); // Đóng form
-                            Navigator.pop(context); // Quay về bảng Kanban
+              return SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 24, right: 24, top: 24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Chỉnh sửa công việc', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 16),
+                        TextField(controller: editTitleController, decoration: const InputDecoration(labelText: 'Tên Task', border: OutlineInputBorder())),
+                        const SizedBox(height: 16),
+                        TextField(controller: editDescController, maxLines: 2, decoration: const InputDecoration(labelText: 'Mô tả', border: OutlineInputBorder())),
+                        const SizedBox(height: 16),
+                
+                        // Sửa Deadline
+                        TextFormField(
+                          readOnly: true,
+                          onTap: () async {
+                            final picked = await showDatePicker(context: context, initialDate: editDueDate ?? DateTime.now(), firstDate: DateTime(2000), lastDate: DateTime(2030));
+                            if (picked != null) setModalState(() => editDueDate = picked);
                           },
-                          child: const Text('Lưu Thay Đổi', style: TextStyle(fontSize: 16)),
+                          decoration: const InputDecoration(labelText: 'Deadline', border: OutlineInputBorder(), suffixIcon: Icon(Icons.calendar_today)),
+                          controller: TextEditingController(text: editDueDate == null ? '' : '${editDueDate!.day}/${editDueDate!.month}/${editDueDate!.year}'),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
+                        const SizedBox(height: 16),
+                
+                        // Sửa Độ ưu tiên
+                        DropdownButtonFormField<String>(
+                          value: selectedPriority,
+                          decoration: const InputDecoration(labelText: 'Độ ưu tiên', border: OutlineInputBorder()),
+                          items: ['Low', 'Medium', 'High'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                          onChanged: (val) => setModalState(() => selectedPriority = val!),
+                        ),
+                        const SizedBox(height: 16),
+                        const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text('Người thực hiện:', style: TextStyle(fontWeight: FontWeight.bold))
+                        ),
+                        const SizedBox(height: 8),
+                        _buildMemberSelector(editAssigneeIds, editAssigneeNames, editAssigneeAvatars, setModalState),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity, height: 50,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              final updatedTask = TaskEntity(
+                                taskId: widget.task.taskId,
+                                projectId: widget.task.projectId,
+                                title: editTitleController.text.trim(),
+                                description: editDescController.text.trim(),
+                                status: widget.task.status,
+                                priority: selectedPriority,
+                                dueDate: editDueDate,
+                                assigneeIds: editAssigneeIds,
+                                assigneeNames: editAssigneeNames,
+                                assigneeAvatarUrls: editAssigneeAvatars,
+                                createdAt: widget.task.createdAt,
+                              );
+                              context.read<TaskBloc>().add(UpdateTask(updatedTask));
+                              Navigator.pop(context);
+                              Navigator.pop(context);
+                            },
+                            child: const Text('Lưu Thay Đổi', style: TextStyle(fontSize: 16)),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -215,19 +211,49 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
   }
 
+  void _openAssistantWithTaskContext(List<MessageEntity> messages) {
+    final assistantContext = {
+      'source': 'task_detail',
+      'task': {
+        'taskId': widget.task.taskId,
+        'projectId': widget.task.projectId,
+        'title': widget.task.title,
+        'description': widget.task.description,
+        'status': widget.task.status,
+        'priority': widget.task.priority,
+        'dueDate': widget.task.dueDate?.toIso8601String(),
+        'assigneeNames': widget.task.assigneeNames,
+      },
+      'messages': messages.map((m) => {
+        'sender': m.senderName,
+        'content': m.content,
+        'timestamp': m.timestamp.toIso8601String(),
+      }).toList(),
+    };
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AiAssistantScreen(
+          projectId: widget.task.projectId,
+          initialContext: assistantContext,
+        ),
+      ),
+    );
+  }
+
   bool _isSummarizing = false;
 
   Future<void> _summarizeChat(List<MessageEntity> messages) async {
     if (messages.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Chưa có tin nhắn nào để tóm tắt')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Chưa có tin nhắn nào để tóm tắt.')));
       return;
     }
 
     setState(() => _isSummarizing = true);
 
     try {
-      // Nhặt tên người gửi và nội dung để ném cho Node.js
-      final chatData = messages.map((m) => {
+      final List<Map<String, String>> chatLog = messages.map((m) => {
         'sender': m.senderName,
         'content': m.content
       }).toList();
@@ -235,47 +261,30 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       final response = await http.post(
         Uri.parse('https://taskhub-backend-ords.onrender.com/api/summarize-chat'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'messages': chatData}),
+        body: jsonEncode({'messages': chatLog}),
       );
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        _showSummaryDialog(data['summary']);
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(children: [Icon(Icons.auto_awesome, color: Colors.orange), SizedBox(width: 8), Text('Tóm tắt hội thoại')]),
+              content: SingleChildScrollView(child: Text(data['summary'] ?? '')),
+              actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Đóng'))],
+            ),
+          );
+        }
       } else {
-        final errorData = jsonDecode(response.body);
-        throw Exception(errorData['error'] ?? 'Lỗi không xác định từ Server');
+        throw Exception('Server trả về lỗi');
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi gọi AI: $e')));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi tóm tắt: $e'), backgroundColor: Colors.red));
     } finally {
       setState(() => _isSummarizing = false);
     }
-  }
-
-  void _showSummaryDialog(String summary) {
-    showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
-            children: [
-              Icon(Icons.auto_awesome, color: Colors.purple),
-              SizedBox(width: 8),
-              Text('Tóm tắt Chat', style: TextStyle(color: Colors.purple)),
-            ],
-          ),
-          // Dùng SingleChildScrollView để đoạn tóm tắt dài không bị tràn màn hình
-          content: SingleChildScrollView(child: Text(summary, style: const TextStyle(fontSize: 15, height: 1.5))),
-          actions: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Đã hiểu', style: TextStyle(color: Colors.white)),
-            )
-          ],
-        )
-    );
   }
 
   Future<void> _deleteFile(Map<String, dynamic> fileData) async {
@@ -308,10 +317,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Bao bọc toàn bộ Scaffold bằng DefaultTabController
     return DefaultTabController(
       initialIndex: widget.initialTabIndex,
-      length: 3, // Khai báo có 3 Tab
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.task.title),
@@ -327,19 +335,20 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             ],
           ),
         ),
-        // NỘI DUNG TƯƠNG ỨNG CHO 3 TABS
-        body: TabBarView(
-          children: [
-            _buildDetailsTab(),       // Tab 1
-            _buildChatTab(),          // Tab 2
-            _buildAttachmentsTab(),   // Tab 3
-          ],
+        body: SafeArea(
+          child: TabBarView(
+            children: [
+              _buildDetailsTab(),       // Tab 1
+              _buildChatTab(),          // Tab 2
+              _buildAttachmentsTab(),   // Tab 3
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ================= TAB 1: CHI TIẾT TASK =================
+  // TAB 1: chi tiết task
   Widget _buildDetailsTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -367,7 +376,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Thông tin người nhận và Deadline (Giao diện chuẩn bị sẵn cho DB mới)
+          // Thông tin người nhận và Deadline
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: const CircleAvatar(child: Icon(Icons.person)),
@@ -441,7 +450,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
   }
 
-  // ================= TAB 2: THẢO LUẬN (CHAT) =================
+  // TAB 2: Chat
   Widget _buildChatTab() {
     return Column(
       children: [
@@ -454,23 +463,38 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
               return Padding(
                 padding: const EdgeInsets.all(8.0),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple.shade50,
-                      elevation: 0,
-                      side: BorderSide(color: Colors.purple.shade200),
+                child: Row(
+                  children: [
+                    // Nút Tóm tắt (Phím tắt cũ)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange.shade50,
+                          elevation: 0,
+                          side: BorderSide(color: Colors.orange.shade200),
+                        ),
+                        icon: _isSummarizing 
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange))
+                            : const Icon(Icons.summarize, color: Colors.orange),
+                        label: const Text('Tóm tắt', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                        onPressed: _isSummarizing ? null : () => _summarizeChat(currentMessages),
+                      ),
                     ),
-                    icon: _isSummarizing
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.purple))
-                        : const Icon(Icons.auto_awesome, color: Colors.purple),
-                    label: Text(
-                        _isSummarizing ? 'AI đang đọc tin nhắn...' : 'Tóm tắt nội dung Chat',
-                        style: const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold)
+                    const SizedBox(width: 8),
+                    // Nút gọi Trợ lý AI (Hub tập trung)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple.shade50,
+                          elevation: 0,
+                          side: BorderSide(color: Colors.purple.shade200),
+                        ),
+                        icon: const Icon(Icons.auto_awesome, color: Colors.purple),
+                        label: const Text('Hỏi Trợ lý', style: TextStyle(color: Colors.purple, fontWeight: FontWeight.bold)),
+                        onPressed: () => _openAssistantWithTaskContext(currentMessages),
+                      ),
                     ),
-                    onPressed: _isSummarizing ? null : () => _summarizeChat(currentMessages),
-                  ),
+                  ],
                 ),
               );
             }
@@ -479,19 +503,16 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           child: BlocBuilder<MessageBloc, MessageState>(
             builder: (context, state) {
               if (state is MessageLoading) return const Center(child: CircularProgressIndicator());
-
-              // THÊM DÒNG NÀY ĐỂ BẮT LỖI
               if (state is MessageError) return Center(child: Text('Lỗi: ${state.error}', style: const TextStyle(color: Colors.red)));
               if (state is MessageLoaded) {
-                // 1. Đảo ngược danh sách tin nhắn để cái mới nhất nằm ở vị trí đầu tiên
+                // 1. Đảo ngược danh sách tin nhắn để cái mới nhất lên
                 final reversedMessages = state.messages.reversed.toList();
 
                 return ListView.builder(
-                  reverse: true, // 2. QUAN TRỌNG: Lật ngược danh sách từ dưới lên trên
+                  reverse: true, //Lật ngược danh sách từ dưới lên trên
                   padding: const EdgeInsets.all(16),
                   itemCount: reversedMessages.length,
                   itemBuilder: (context, index) {
-                    // 3. Sử dụng danh sách đã đảo ngược
                     final msg = reversedMessages[index];
                     final isMe = msg.senderId == currentUser?.uid;
 
@@ -501,7 +522,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          // NẾU LÀ NGƯỜI KHÁC -> HIỆN AVATAR BÊN TRÁI
+                          // ng khaccs thì hiện avt bên trái
                           if (!isMe) ...[
                             CircleAvatar(
                               radius: 16,
@@ -514,7 +535,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             const SizedBox(width: 8),
                           ],
 
-                          // KHUNG TIN NHẮN (BONG BÓNG)
+                          //khung chat
                           Flexible(
                             child: Container(
                               padding: const EdgeInsets.all(12),
@@ -594,7 +615,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   // Hàm xử lý upload file
   Future<void> _uploadFile() async {
-    // 1. Dùng withData: true để Web có thể đọc được fileBytes
     FilePickerResult? result = await FilePicker.pickFiles(
       type: FileType.any,
       withData: true,
@@ -618,14 +638,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     }
 
     try {
-      // 2. Upload lên Firebase Storage
+      // Upload lên Firebase Storage
       final storageRef = FirebaseStorage.instance.ref().child('task_attachments/${widget.task.taskId}/$fileName');
 
       // Khai báo ContentType rỗng để Firebase tự động nhận diện (Word, Excel, PDF...)
       await storageRef.putData(fileBytes, SettableMetadata(contentType: 'application/octet-stream'));
       final downloadUrl = await storageRef.getDownloadURL();
 
-      // 3. Cập nhật thẳng vào mảng 'attachments' của Task trên Firestore
+      // Cập nhật thẳng vào mảng 'attachments' của Task trên Firestore
       await FirebaseFirestore.instance.collection('TASKS').doc(widget.task.taskId).update({
         'attachments': FieldValue.arrayUnion([
           {'name': fileName, 'url': downloadUrl}
@@ -642,8 +662,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     }
   }
 
-  // ================= TAB 3: ĐÍNH KÈM FILE =================
-  // ================= TAB 3: ĐÍNH KÈM FILE =================
+  // TAB 3: file
   Widget _buildAttachmentsTab() {
     return Column(
       children: [
@@ -727,7 +746,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                         style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                                         onPressed: () {
                                           Navigator.pop(ctx);
-                                          _deleteFile(file); // Gọi hàm xóa mà chúng ta đã viết trước đó
+                                          _deleteFile(file);
                                         },
                                         child: const Text('Xóa', style: TextStyle(color: Colors.white)),
                                       ),
@@ -761,7 +780,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     );
   }
 
-  // Hàm hiển thị danh sách chọn người trong Modal
   Widget _buildMemberSelector(List<String> ids, List<String> names, List<String> avatars, StateSetter setModalState) {
     return FutureBuilder<DocumentSnapshot>(
       future: FirebaseFirestore.instance.collection('PROJECTS').doc(widget.task.projectId).get(),

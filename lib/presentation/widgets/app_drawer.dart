@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../pages/ai_assistant_screen.dart';
 import '../pages/dashboard_screen.dart';
 import '../pages/login_screen.dart';
 import '../pages/message_list_screen.dart';
@@ -17,7 +18,6 @@ class AppDrawer extends StatelessWidget {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          // Phần 1: Header StreamBuilder (Giữ nguyên code xịn của bạn)
           StreamBuilder<DocumentSnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('USERS')
@@ -53,7 +53,7 @@ class AppDrawer extends StatelessWidget {
             },
           ),
 
-          // Phần 2: Các nút chức năng (Dùng hàm _buildMenuItem để tự động bôi đậm)
+          // các nút chức năng
           _buildMenuItem(
             context,
             icon: Icons.dashboard,
@@ -72,15 +72,23 @@ class AppDrawer extends StatelessWidget {
 
           _buildMenuItem(
             context,
+            icon: Icons.auto_awesome,
+            title: 'Trợ lý AI', 
+            index: 2,
+            targetScreen: const AiAssistantScreen(),
+          ),
+
+          _buildMenuItem(
+            context,
             icon: Icons.person,
             title: 'Thông tin cá nhân',
-            index: 2,
+            index: 3,
             targetScreen: const ProfileScreen(),
           ),
 
           const Divider(),
 
-          // Nút Đăng xuất
+          // log out
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
             title: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),

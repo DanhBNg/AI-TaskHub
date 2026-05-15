@@ -4,8 +4,8 @@ class InviteEntity extends Equatable {
   final String inviteId;
   final String projectId;
   final String projectName;
-  final String senderName; // Tên người mời
-  final String receiverId; // ID người được mời
+  final String senderName;
+  final String receiverId;
   final DateTime createdAt;
 
   const InviteEntity({

@@ -1,6 +1,7 @@
 import 'package:get_it/get_it.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
 
 import '../../data/datasources/auth_remote_data_source.dart';
 import '../../data/repositories/auth_repository_impl.dart';
@@ -22,6 +23,12 @@ import '../../data/datasources/message_remote_data_source.dart';
 import '../../data/repositories/message_repository_impl.dart';
 import '../../domain/repositories/message_repository.dart';
 import '../../presentation/state/message_bloc.dart';
+
+import '../../data/datasources/ai_assistant_remote_data_source.dart';
+import '../../data/repositories/ai_assistant_repository_impl.dart';
+import '../../domain/repositories/ai_assistant_repository.dart';
+import '../../presentation/state/ai_assistant_bloc.dart';
+
 final sl = GetIt.instance;
 
 Future<void> init() async {
@@ -30,11 +37,11 @@ Future<void> init() async {
   sl.registerFactory(() => AuthBloc(authRepository: sl()));
   // Repository
   sl.registerLazySingleton<AuthRepository>(
-        () => AuthRepositoryImpl(remoteDataSource: sl()),
+    () => AuthRepositoryImpl(remoteDataSource: sl()),
   );
   // Data sources
   sl.registerLazySingleton<AuthRemoteDataSource>(
-        () => AuthRemoteDataSourceImpl(firebaseAuth: sl(), firestore: sl()),
+    () => AuthRemoteDataSourceImpl(firebaseAuth: sl(), firestore: sl()),
   );
   // External
   sl.registerLazySingleton(() => FirebaseAuth.instance);
@@ -46,23 +53,41 @@ Future<void> init() async {
 
   // Repository
   sl.registerLazySingleton<ProjectRepository>(
-        () => ProjectRepositoryImpl(remoteDataSource: sl()),
+    () => ProjectRepositoryImpl(remoteDataSource: sl()),
   );
 
   // Data Source
   sl.registerLazySingleton<ProjectRemoteDataSource>(
-        () => ProjectRemoteDataSourceImpl(firestore: sl()),
+    () => ProjectRemoteDataSourceImpl(firestore: sl()),
   );
 
   //TASK
   sl.registerFactory(() => TaskBloc(taskRepository: sl()));
-  sl.registerLazySingleton<TaskRepository>(() => TaskRepositoryImpl(remoteDataSource: sl()));
-  sl.registerLazySingleton<TaskRemoteDataSource>(() => TaskRemoteDataSourceImpl(firestore: sl()));
+  sl.registerLazySingleton<TaskRepository>(
+    () => TaskRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton<TaskRemoteDataSource>(
+    () => TaskRemoteDataSourceImpl(firestore: sl()),
+  );
 
   //MESSAGE
   sl.registerFactory(() => MessageBloc(messageRepository: sl()));
-  sl.registerLazySingleton<MessageRepository>(() => MessageRepositoryImpl(remoteDataSource: sl()));
-  sl.registerLazySingleton<MessageRemoteDataSource>(() => MessageRemoteDataSourceImpl(firestore: sl()));
+  sl.registerLazySingleton<MessageRepository>(
+    () => MessageRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton<MessageRemoteDataSource>(
+    () => MessageRemoteDataSourceImpl(firestore: sl()),
+  );
+
+  //AI ASSISTANT
+  sl.registerFactory(() => AiAssistantBloc(aiAssistantRepository: sl()));
+  sl.registerLazySingleton<AiAssistantRepository>(
+    () => AiAssistantRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton<AiAssistantRemoteDataSource>(
+    () => AiAssistantRemoteDataSourceImpl(client: sl()),
+  );
+  sl.registerLazySingleton(() => http.Client());
 
   //INVITE
   sl.registerFactory(() => InviteBloc(projectRepository: sl()));

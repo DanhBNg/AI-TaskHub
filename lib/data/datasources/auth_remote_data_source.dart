@@ -20,13 +20,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<UserModel> signInWithEmail(String email, String password) async {
-    // 1. Đăng nhập bằng Firebase Auth
+    // Đăng nhập bằng Firebase Auth
     final userCredential = await firebaseAuth.signInWithEmailAndPassword(
       email: email,
       password: password,
     );
 
-    // 2. Lấy thông tin user từ bảng USERS trên Firestore
+    // Lấy tt USERS trên Firestore
     final doc = await firestore.collection('USERS').doc(userCredential.user!.uid).get();
 
     if (doc.exists) {
@@ -38,20 +38,19 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<UserModel> signUpWithEmail(String email, String password, String fullName) async {
-    // 1. Tạo tài khoản mới trên Firebase Auth
+    // tạo tài khoản mới trên Firebase Auth
     final userCredential = await firebaseAuth.createUserWithEmailAndPassword(
       email: email,
       password: password,
     );
     await userCredential.user!.updateDisplayName(fullName);
-    // 2. Tạo đối tượng Model để chuẩn bị lưu
     final newUser = UserModel(
       id: userCredential.user!.uid,
       email: email,
       fullName: fullName,
     );
 
-    // 3. Lưu thông tin bổ sung (fullName, vai trò) vào bảng USERS trên Firestore
+    //  Lưu thông tin bổ sung (fullName, vai trò) vào bảng USERS
     await firestore.collection('USERS').doc(newUser.id).set(newUser.toJson());
 
     return newUser;

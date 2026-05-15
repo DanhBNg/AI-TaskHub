@@ -24,7 +24,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    // Hiển thị tên hiện tại lên ô nhập liệu
     _nameController.text = currentUser?.displayName ?? '';
   }
 
@@ -41,7 +40,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // Hàm lưu thông tin lên Firebase
   Future<void> _updateProfile() async {
     if (_nameController.text.trim().isEmpty) return;
 
@@ -52,7 +50,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       String? newPhotoUrl = currentUser?.photoURL;
 
-      // 1. Nếu có chọn ảnh mới, up lên Storage trước
+      // Nếu có chọn ảnh mới, up lên Storage trước
       if (_selectedImageBytes != null) {
         final fileName = 'avatar_${currentUser!.uid}.jpg';
         final ref = FirebaseStorage.instance.ref().child('avatars/$fileName');
@@ -61,13 +59,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         newPhotoUrl = await ref.getDownloadURL();
       }
 
-      // 2. Cập nhật thông tin trên Firebase Auth
+      // ập nhật thông tin trên Firebase Auth
       await currentUser!.updateDisplayName(_nameController.text.trim());
       if (newPhotoUrl != null) {
         await currentUser!.updatePhotoURL(newPhotoUrl);
       }
 
-      // 3. Đồng bộ tên và avatar sang bảng USERS trên Firestore
+      // Đồng bộ tên và avatar sang bảng USERS trên Firestore
       await FirebaseFirestore.instance.collection('USERS').doc(currentUser!.uid).update({
         'fullName': _nameController.text.trim(),
         'avatarUrl': newPhotoUrl,
