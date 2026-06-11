@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
 import '../../../domain/entities/task_entity.dart';
 import '../../data/models/task_model.dart';
+import '../theme/app_theme.dart';
 import '../widgets/app_drawer.dart';
 import 'task_detail_sceen.dart';
 
@@ -20,100 +22,198 @@ class MessageListScreen extends StatelessWidget {
         child: StreamBuilder<QuerySnapshot>(
           stream: projectId != null && projectId!.isNotEmpty
               ? FirebaseFirestore.instance
-              .collection('TASKS')
-              .where('projectId', isEqualTo: projectId)
-              .snapshots()
-              : FirebaseFirestore.instance
-              .collection('TASKS')
-              .snapshots(),
+                  .collection('TASKS')
+                  .where('projectId', isEqualTo: projectId)
+                  .snapshots()
+              : FirebaseFirestore.instance.collection('TASKS').snapshots(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
-        
+
             if (snapshot.hasError) {
-              return Center(child: Text('Lỗi: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+              return _MessageState(
+                icon: Icons.error_outline,
+                title: 'Không tải được tin nhắn',
+                message: '${snapshot.error}',
+                color: AppColors.danger,
+              );
             }
-        
+
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return const Center(child: Text('Chưa có đoạn hội thoại nào.'));
+              return const _MessageState(
+                icon: Icons.chat_bubble_outline,
+                title: 'Chưa có hội thoại',
+                message: 'Các trao đổi trong task sẽ xuất hiện tại đây.',
+                color: AppColors.primary,
+              );
             }
-        
+
             final tasksWithMessages = snapshot.data!.docs.where((doc) {
               final data = doc.data() as Map<String, dynamic>;
               return data.containsKey('lastMessage') &&
                   data['lastMessage'] != null &&
                   data['lastMessage'].toString().trim().isNotEmpty;
             }).toList();
-        
+
             tasksWithMessages.sort((a, b) {
               final dataA = a.data() as Map<String, dynamic>;
               final dataB = b.data() as Map<String, dynamic>;
-        
+
               final timeA = dataA['lastMessageTime'] as Timestamp?;
               final timeB = dataB['lastMessageTime'] as Timestamp?;
-        
+
               if (timeA == null && timeB == null) return 0;
               if (timeA == null) return 1;
               if (timeB == null) return -1;
-        
+
               return timeB.compareTo(timeA);
             });
-        
+
             if (tasksWithMessages.isEmpty) {
-              return const Center(child: Text('Chưa có đoạn hội thoại nào.'));
+              return const _MessageState(
+                icon: Icons.chat_bubble_outline,
+                title: 'Chưa có hội thoại',
+                message: 'Các trao đổi trong task sẽ xuất hiện tại đây.',
+                color: AppColors.primary,
+              );
             }
-        
+
             return ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               itemCount: tasksWithMessages.length,
               itemBuilder: (context, index) {
                 final doc = tasksWithMessages[index];
                 final data = doc.data() as Map<String, dynamic>;
-        
-                // Map ra TaskEntity
                 final TaskEntity task = TaskModel.fromFirestore(doc);
-        
                 final lastMessage = data['lastMessage'] as String;
                 final timestamp = data['lastMessageTime'] as Timestamp?;
-        
-                // Định dạng thời gian
+
                 String timeString = '';
                 if (timestamp != null) {
                   final date = timestamp.toDate();
-                  timeString = '${date.hour}:${date.minute.toString().padLeft(2, '0')} - ${date.day}/${date.month}';
+                  timeString =
+                      '${date.hour}:${date.minute.toString().padLeft(2, '0')} - ${date.day}/${date.month}';
                 }
-        
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: Colors.blueAccent,
-                      child: Icon(Icons.chat_bubble, color: Colors.white, size: 20),
-                    ),
-                    title: Text(task.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(
-                      lastMessage,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.black87),
-                    ),
-                    trailing: Text(timeString, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => TaskDetailScreen(
-                            task: task,
-                            initialTabIndex: 1,
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Card(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(AppRadii.md),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TaskDetailScreen(
+                              task: task,
+                              initialTabIndex: 1,
+                            ),
                           ),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 46,
+                              height: 46,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.10),
+                                borderRadius: BorderRadius.circular(AppRadii.md),
+                              ),
+                              child: const Icon(
+                                Icons.chat_bubble_outline,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    task.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    lastMessage,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AppColors.muted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Text(
+                              timeString,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.muted,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
-                      );
-                    },
+                      ),
+                    ),
                   ),
                 );
               },
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+class _MessageState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String message;
+  final Color color;
+
+  const _MessageState({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 52),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              title,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.muted),
+            ),
+          ],
         ),
       ),
     );

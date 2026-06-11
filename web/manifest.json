@@ -1,11 +1,11 @@
 {
-    "name": "taskhub_ai",
-    "short_name": "taskhub_ai",
+    "name": "TaskHub AI",
+    "short_name": "TaskHub AI",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#2563EB",
+    "theme_color": "#2563EB",
+    "description": "Ứng dụng quản lý dự án công nghệ tích hợp trợ lý AI.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
