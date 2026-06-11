@@ -1,11 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
 import '../pages/ai_assistant_screen.dart';
 import '../pages/dashboard_screen.dart';
 import '../pages/login_screen.dart';
 import '../pages/message_list_screen.dart';
 import '../pages/profile_screen.dart';
+import '../theme/app_theme.dart';
 
 class AppDrawer extends StatelessWidget {
   final int currentIndex;
@@ -16,7 +18,7 @@ class AppDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Drawer(
       child: ListView(
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         children: [
           StreamBuilder<DocumentSnapshot>(
             stream: FirebaseFirestore.instance
@@ -25,80 +27,91 @@ class AppDrawer extends StatelessWidget {
                 .snapshots(),
             builder: (context, snapshot) {
               if (!snapshot.hasData || !snapshot.data!.exists) {
-                return const UserAccountsDrawerHeader(
-                  decoration: BoxDecoration(color: Colors.blueAccent),
-                  accountName: Text('Đang tải...'),
-                  accountEmail: Text(''),
-                  currentAccountPicture: CircleAvatar(backgroundColor: Colors.white),
+                return const _DrawerHeaderShell(
+                  name: 'Đang tải...',
+                  email: '',
+                  avatar: CircleAvatar(backgroundColor: Colors.white),
                 );
               }
 
               final userData = snapshot.data!.data() as Map<String, dynamic>;
-              final email = userData['email'] ?? FirebaseAuth.instance.currentUser?.email ?? '';
+              final email =
+                  userData['email'] ?? FirebaseAuth.instance.currentUser?.email ?? '';
               final displayName = userData['fullName'] ?? email.split('@')[0];
               final avatarUrl = userData['avatarUrl'];
 
-              return UserAccountsDrawerHeader(
-                decoration: const BoxDecoration(color: Colors.blueAccent),
-                accountName: Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                accountEmail: Text(email),
-                currentAccountPicture: CircleAvatar(
+              return _DrawerHeaderShell(
+                name: displayName,
+                email: email,
+                avatar: CircleAvatar(
                   backgroundColor: Colors.white,
-                  backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                  backgroundImage:
+                      avatarUrl != null ? NetworkImage(avatarUrl) : null,
                   child: avatarUrl == null
-                      ? Text(displayName[0].toUpperCase(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blueAccent))
+                      ? Text(
+                          displayName[0].toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        )
                       : null,
                 ),
               );
             },
           ),
-
-          // các nút chức năng
           _buildMenuItem(
             context,
-            icon: Icons.dashboard,
+            icon: Icons.dashboard_outlined,
             title: 'Dashboard',
             index: 0,
             targetScreen: const DashboardScreen(),
           ),
-
           _buildMenuItem(
             context,
-            icon: Icons.chat_bubble,
+            icon: Icons.chat_bubble_outline,
             title: 'Tin nhắn',
             index: 1,
-            targetScreen: const MessageListScreen(projectId: '',),
+            targetScreen: const MessageListScreen(projectId: ''),
           ),
-
           _buildMenuItem(
             context,
             icon: Icons.auto_awesome,
-            title: 'Trợ lý AI', 
+            title: 'Trợ lý AI',
             index: 2,
             targetScreen: const AiAssistantScreen(),
           ),
-
           _buildMenuItem(
             context,
-            icon: Icons.person,
+            icon: Icons.person_outline,
             title: 'Thông tin cá nhân',
             index: 3,
             targetScreen: const ProfileScreen(),
           ),
-
-          const Divider(),
-
-          // log out
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Divider(),
+          ),
           ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadii.md),
+            ),
+            leading: const Icon(Icons.logout, color: AppColors.danger),
+            title: const Text(
+              'Đăng xuất',
+              style: TextStyle(
+                color: AppColors.danger,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             onTap: () async {
               await FirebaseAuth.instance.signOut();
               if (context.mounted) {
                 Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                        (route) => false
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (route) => false,
                 );
               }
             },
@@ -108,30 +121,119 @@ class AppDrawer extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuItem(BuildContext context, {required IconData icon, required String title, required int index, required Widget targetScreen}) {
+  Widget _buildMenuItem(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required int index,
+    required Widget targetScreen,
+  }) {
     final isSelected = currentIndex == index;
 
-    return ListTile(
-      selected: isSelected,
-      selectedTileColor: Colors.blue.shade50,
-      leading: Icon(icon, color: isSelected ? Colors.blueAccent : Colors.grey.shade600),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: isSelected ? Colors.blueAccent : Colors.black87,
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: ListTile(
+        selected: isSelected,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+        ),
+        selectedTileColor: AppColors.surfaceAlt,
+        leading: Icon(
+          icon,
+          color: isSelected ? AppColors.primary : AppColors.muted,
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: isSelected ? AppColors.primary : AppColors.text,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+          ),
+        ),
+        onTap: () {
+          Navigator.pop(context);
+
+          if (!isSelected) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => targetScreen),
+            );
+          }
+        },
+      ),
+    );
+  }
+}
+
+class _DrawerHeaderShell extends StatelessWidget {
+  final String name;
+  final String email;
+  final Widget avatar;
+
+  const _DrawerHeaderShell({
+    required this.name,
+    required this.email,
+    required this.avatar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(0, 16, 0, 12),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        gradient: const LinearGradient(
+          colors: [AppColors.primaryDark, AppColors.primary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
       ),
-      onTap: () {
-        Navigator.pop(context);
-
-        if (!isSelected) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => targetScreen),
-          );
-        }
-      },
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                avatar,
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                  ),
+                  child: const Icon(
+                    Icons.auto_awesome,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+              ),
+            ),
+            if (email.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                email,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white70),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

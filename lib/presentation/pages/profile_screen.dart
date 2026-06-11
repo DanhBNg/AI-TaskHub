@@ -1,10 +1,12 @@
 import 'dart:typed_data';
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../theme/app_theme.dart';
 import '../widgets/app_drawer.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -27,10 +29,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _nameController.text = currentUser?.displayName ?? '';
   }
 
-  // Hàm chọn ảnh từ máy
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
 
     if (pickedFile != null) {
       final bytes = await pickedFile.readAsBytes();
@@ -50,36 +54,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       String? newPhotoUrl = currentUser?.photoURL;
 
-      // Nếu có chọn ảnh mới, up lên Storage trước
       if (_selectedImageBytes != null) {
         final fileName = 'avatar_${currentUser!.uid}.jpg';
         final ref = FirebaseStorage.instance.ref().child('avatars/$fileName');
 
-        await ref.putData(_selectedImageBytes!, SettableMetadata(contentType: 'image/jpeg'));
+        await ref.putData(
+          _selectedImageBytes!,
+          SettableMetadata(contentType: 'image/jpeg'),
+        );
         newPhotoUrl = await ref.getDownloadURL();
       }
 
-      // ập nhật thông tin trên Firebase Auth
       await currentUser!.updateDisplayName(_nameController.text.trim());
       if (newPhotoUrl != null) {
         await currentUser!.updatePhotoURL(newPhotoUrl);
       }
 
-      // Đồng bộ tên và avatar sang bảng USERS trên Firestore
       await FirebaseFirestore.instance.collection('USERS').doc(currentUser!.uid).update({
         'fullName': _nameController.text.trim(),
         'avatarUrl': newPhotoUrl,
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cập nhật thành công!'), backgroundColor: Colors.green));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cập nhật thành công!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
         if (Navigator.canPop(context)) {
           Navigator.pop(context);
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
       }
     } finally {
       setState(() {
@@ -92,66 +106,99 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Thông tin cá nhân')),
-      drawer: const AppDrawer(currentIndex: 2),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Khu vực hiển thị và chọn Avatar
-              Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  CircleAvatar(
-                    radius: 60,
-                    backgroundColor: Colors.grey.shade300,
-                    backgroundImage: _selectedImageBytes != null
-                        ? MemoryImage(_selectedImageBytes!) // Hiển thị ảnh vừa chọn
-                        : (currentUser?.photoURL != null ? NetworkImage(currentUser!.photoURL!) : null) as ImageProvider?,
-                    child: (_selectedImageBytes == null && currentUser?.photoURL == null)
-                        ? const Icon(Icons.person, size: 60, color: Colors.grey)
-                        : null,
+      drawer: const AppDrawer(currentIndex: 3),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(
+                        child: Stack(
+                          alignment: Alignment.bottomRight,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: CircleAvatar(
+                                radius: 60,
+                                backgroundColor: AppColors.surfaceAlt,
+                                backgroundImage: _selectedImageBytes != null
+                                    ? MemoryImage(_selectedImageBytes!)
+                                    : (currentUser?.photoURL != null
+                                        ? NetworkImage(currentUser!.photoURL!)
+                                        : null) as ImageProvider?,
+                                child: (_selectedImageBytes == null &&
+                                        currentUser?.photoURL == null)
+                                    ? const Icon(
+                                        Icons.person,
+                                        size: 60,
+                                        color: AppColors.muted,
+                                      )
+                                    : null,
+                              ),
+                            ),
+                            IconButton.filled(
+                              tooltip: 'Đổi ảnh đại diện',
+                              onPressed: _pickImage,
+                              icon: const Icon(Icons.camera_alt_outlined),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        'Hồ sơ của bạn',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      TextField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Tên hiển thị',
+                          prefixIcon: Icon(Icons.badge_outlined),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      SizedBox(
+                        height: 50,
+                        child: ElevatedButton.icon(
+                          onPressed: _isLoading ? null : _updateProfile,
+                          icon: _isLoading
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.save_outlined),
+                          label: const Text('Lưu thay đổi'),
+                        ),
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    onPressed: _pickImage,
-                    icon: const CircleAvatar(
-                      backgroundColor: Colors.blueAccent,
-                      radius: 18,
-                      child: Icon(Icons.camera_alt, size: 20, color: Colors.white),
-                    ),
-                  )
-                ],
-              ),
-              const SizedBox(height: 32),
-
-              // Ô nhập Tên hiển thị
-              TextField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  labelText: 'Tên hiển thị',
-                  prefixIcon: const Icon(Icons.badge),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
-              const SizedBox(height: 32),
-
-              // Nút Lưu thay đổi
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _updateProfile,
-                  style: ElevatedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Lưu Thay Đổi', style: TextStyle(fontSize: 16)),
-                ),
-              )
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 }
+

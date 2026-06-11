@@ -4,6 +4,7 @@ import '../../domain/entities/ai_chat_message_entity.dart';
 import '../state/ai_assistant_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../theme/app_theme.dart';
 import '../widgets/app_drawer.dart';
 
 class AiAssistantScreen extends StatefulWidget {
@@ -154,17 +155,17 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
               ),
         title: const Row(
           children: [
-            Icon(Icons.auto_awesome, color: Colors.purple),
+            Icon(Icons.auto_awesome, color: AppColors.ai),
             SizedBox(width: 8),
             Text('Trợ lý AI TaskHub'),
           ],
         ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 1,
+        backgroundColor: AppColors.background,
+        foregroundColor: AppColors.text,
+        elevation: 0,
       ),
       drawer: const AppDrawer(currentIndex: 2),
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -192,22 +193,22 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                             Container(
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
-                                color: Colors.purple.shade50,
+                                color: AppColors.aiSoft,
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.smart_toy, size: 64, color: Colors.purple),
+                              child: const Icon(Icons.smart_toy, size: 64, color: AppColors.ai),
                             ),
                             const SizedBox(height: 24),
                             const Text(
                               'Xin chào!\nTôi là Trợ lý AI của bạn.',
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.text),
                             ),
                             const SizedBox(height: 12),
                             const Text(
                               'Bạn có thể yêu cầu tôi chia nhỏ công việc, tóm tắt tiến độ dự án, hoặc phân tích hạn chót (deadline).',
                               textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.grey, fontSize: 14, height: 1.5),
+                              style: TextStyle(color: AppColors.muted, fontSize: 14, height: 1.5),
                             ),
                           ],
                         ),
@@ -264,8 +265,8 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = message.isUser;
-    final bubbleColor = isUser ? Colors.purple : Colors.white;
-    final textColor = isUser ? Colors.white : Colors.black87;
+    final bubbleColor = isUser ? AppColors.ai : AppColors.surface;
+    final textColor = isUser ? Colors.white : AppColors.text;
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -278,8 +279,8 @@ class _MessageBubble extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: bubbleColor,
-            border: isUser ? null : Border.all(color: Colors.grey.shade200),
-            boxShadow: isUser ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))],
+            border: isUser ? null : Border.all(color: AppColors.border),
+            boxShadow: isUser ? [] : [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(20),
               topRight: const Radius.circular(20),
@@ -295,9 +296,9 @@ class _MessageBubble extends StatelessWidget {
                 const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.auto_awesome, size: 14, color: Colors.purple),
+                    Icon(Icons.auto_awesome, size: 14, color: AppColors.ai),
                     SizedBox(width: 6),
-                    Text('Trợ lý AI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.purple)),
+                    Text('Trợ lý AI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.ai)),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -318,11 +319,11 @@ class _MessageBubble extends StatelessWidget {
                   runSpacing: 8,
                   children: message.suggestedActions.map((action) {
                     return ActionChip(
-                      backgroundColor: Colors.purple.shade50,
-                      side: BorderSide(color: Colors.purple.shade100),
-                      labelStyle: const TextStyle(color: Colors.purple, fontSize: 12, fontWeight: FontWeight.bold),
+                      backgroundColor: AppColors.aiSoft,
+                      side: const BorderSide(color: Color(0xFFE9D5FF)),
+                      labelStyle: const TextStyle(color: AppColors.ai, fontSize: 12, fontWeight: FontWeight.bold),
                       label: Text(actionLabelBuilder(action)),
-                      avatar: const Icon(Icons.bolt, size: 16, color: Colors.purple),
+                      avatar: const Icon(Icons.bolt, size: 16, color: AppColors.ai),
                       onPressed: () => onActionPressed(action),
                     );
                   }).toList(),
@@ -344,8 +345,8 @@ class _TypingBubble extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey.shade200),
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(20),
       ),
       child: const Row(
@@ -353,10 +354,10 @@ class _TypingBubble extends StatelessWidget {
         children: [
           SizedBox(
             width: 16, height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.purple),
+            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ai),
           ),
           SizedBox(width: 12),
-          Text('AI đang suy nghĩ...', style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
+          Text('AI đang suy nghĩ...', style: TextStyle(color: AppColors.muted, fontStyle: FontStyle.italic)),
         ],
       ),
     );
@@ -374,8 +375,9 @@ class _InputBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
+        color: AppColors.surface,
+        border: const Border(top: BorderSide(color: AppColors.border)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, -4))],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -388,9 +390,9 @@ class _InputBar extends StatelessWidget {
               onSubmitted: (_) => onSend(),
               decoration: InputDecoration(
                 hintText: 'Nhắn với Trợ lý AI...',
-                hintStyle: TextStyle(color: Colors.grey.shade400),
+                hintStyle: const TextStyle(color: AppColors.muted),
                 filled: true,
-                fillColor: Colors.grey.shade100,
+                fillColor: AppColors.surfaceAlt,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide.none,
@@ -401,7 +403,7 @@ class _InputBar extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Container(
-            decoration: const BoxDecoration(color: Colors.purple, shape: BoxShape.circle),
+            decoration: const BoxDecoration(color: AppColors.ai, shape: BoxShape.circle),
             child: IconButton(
               icon: const Icon(Icons.arrow_upward, color: Colors.white),
               onPressed: onSend,
