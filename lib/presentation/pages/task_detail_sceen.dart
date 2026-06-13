@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../domain/entities/task_entity.dart';
+import '../../core/config/app_config.dart';
 import '../../../domain/entities/message_entity.dart';
 import '../../presentation/state/message_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../state/task_bloc.dart';
+import '../theme/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'ai_assistant_screen.dart';
 import 'dart:convert';
@@ -92,6 +94,17 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     }
   }
 
+  Color _priorityColor(String priority) {
+    switch (priority.toLowerCase()) {
+      case 'high':
+        return AppColors.danger;
+      case 'medium':
+        return AppColors.warning;
+      default:
+        return AppColors.success;
+    }
+  }
+
   void _deleteTask() {
     showDialog(
       context: context,
@@ -162,7 +175,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 
                         // Sửa Độ ưu tiên
                         DropdownButtonFormField<String>(
-                          value: selectedPriority,
+                          initialValue: selectedPriority,
                           decoration: const InputDecoration(labelText: 'Độ ưu tiên', border: OutlineInputBorder()),
                           items: ['Low', 'Medium', 'High'].map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
                           onChanged: (val) => setModalState(() => selectedPriority = val!),
@@ -259,7 +272,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       }).toList();
 
       final response = await http.post(
-        Uri.parse('https://taskhub-backend-ords.onrender.com/api/summarize-chat'),
+        AppConfig.apiUri('/api/summarize-chat'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'messages': chatLog}),
       );
@@ -325,9 +338,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           title: Text(widget.task.title),
           // THANH ĐIỀU HƯỚNG TABS
           bottom: const TabBar(
-            labelColor: Colors.blueAccent,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Colors.blueAccent,
+            labelColor: AppColors.primary,
+            unselectedLabelColor: AppColors.muted,
+            indicatorColor: AppColors.primary,
             tabs: [
               Tab(icon: Icon(Icons.info_outline), text: 'Chi tiết'),
               Tab(icon: Icon(Icons.chat_bubble_outline), text: 'Thảo luận'),
@@ -359,8 +372,17 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Chip(label: Text(_translateStatus(widget.task.status), style: const TextStyle(color: Colors.white)), backgroundColor: Colors.blueAccent),
-              Chip(label: Text('Ưu tiên: ${widget.task.priority}')),
+              Chip(
+                label: Text(_translateStatus(widget.task.status), style: const TextStyle(color: Colors.white)),
+                backgroundColor: AppColors.primary,
+                side: BorderSide.none,
+              ),
+              Chip(
+                label: Text('Ưu tiên: ${widget.task.priority}'),
+                backgroundColor: _priorityColor(widget.task.priority).withValues(alpha: 0.12),
+                side: BorderSide(color: _priorityColor(widget.task.priority).withValues(alpha: 0.28)),
+                labelStyle: TextStyle(color: _priorityColor(widget.task.priority), fontWeight: FontWeight.w800),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -371,7 +393,11 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+              border: Border.all(color: AppColors.border),
+            ),
             child: Text(widget.task.description.isEmpty ? 'Chưa có mô tả' : widget.task.description),
           ),
           const SizedBox(height: 24),
@@ -379,13 +405,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           // Thông tin người nhận và Deadline
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const CircleAvatar(child: Icon(Icons.person)),
+            leading: const CircleAvatar(backgroundColor: AppColors.surfaceAlt, child: Icon(Icons.person, color: AppColors.primary)),
             title: const Text('Người thực hiện'),
             subtitle: Text(widget.task.assigneeNames.join(', ')),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const CircleAvatar(backgroundColor: Colors.orangeAccent, child: Icon(Icons.calendar_today, color: Colors.white)),
+            leading: const CircleAvatar(backgroundColor: AppColors.warning, child: Icon(Icons.calendar_today, color: Colors.white)),
             title: const Text('Hạn chót (Deadline)'),
             subtitle: Text(widget.task.dueDate != null ? widget.task.dueDate.toString() : 'Chưa đặt ngày'),
           ),
@@ -411,13 +437,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                      color: Colors.red.shade50,
+                      color: AppColors.danger.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red.shade200)
+                      border: Border.all(color: AppColors.danger.withValues(alpha: 0.24))
                   ),
                   child: const Text(
                     '🔒 Chỉ Chủ dự án và Quản trị viên mới có quyền Sửa hoặc Xóa công việc này.',
-                    style: TextStyle(color: Colors.red, fontStyle: FontStyle.italic),
+                    style: TextStyle(color: AppColors.danger, fontStyle: FontStyle.italic),
                     textAlign: TextAlign.center,
                   ),
                 );
@@ -427,7 +453,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      icon: const Icon(Icons.edit, color: Colors.blue),
+                      icon: const Icon(Icons.edit, color: AppColors.primary),
                       label: const Text('Chỉnh sửa'),
                       onPressed: _showEditTaskModal,
                     ),
@@ -435,7 +461,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
                       icon: const Icon(Icons.delete, color: Colors.white),
                       label: const Text('Xóa Task', style: TextStyle(color: Colors.white)),
                       onPressed: _deleteTask,
@@ -469,14 +495,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     Expanded(
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange.shade50,
+                          backgroundColor: AppColors.warning.withValues(alpha: 0.10),
                           elevation: 0,
-                          side: BorderSide(color: Colors.orange.shade200),
+                          side: BorderSide(color: AppColors.warning.withValues(alpha: 0.24)),
                         ),
                         icon: _isSummarizing 
-                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange))
-                            : const Icon(Icons.summarize, color: Colors.orange),
-                        label: const Text('Tóm tắt', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.warning))
+                            : const Icon(Icons.summarize, color: AppColors.warning),
+                        label: const Text('Tóm tắt', style: TextStyle(color: AppColors.warning, fontWeight: FontWeight.bold)),
                         onPressed: _isSummarizing ? null : () => _summarizeChat(currentMessages),
                       ),
                     ),
@@ -485,12 +511,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     Expanded(
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.purple.shade50,
+                          backgroundColor: AppColors.aiSoft,
                           elevation: 0,
-                          side: BorderSide(color: Colors.purple.shade200),
+                          side: const BorderSide(color: Color(0xFFE9D5FF)),
                         ),
-                        icon: const Icon(Icons.auto_awesome, color: Colors.purple),
-                        label: const Text('Hỏi Trợ lý', style: TextStyle(color: Colors.purple, fontWeight: FontWeight.bold)),
+                        icon: const Icon(Icons.auto_awesome, color: AppColors.ai),
+                        label: const Text('Hỏi Trợ lý', style: TextStyle(color: AppColors.ai, fontWeight: FontWeight.bold)),
                         onPressed: () => _openAssistantWithTaskContext(currentMessages),
                       ),
                     ),
@@ -529,7 +555,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                               backgroundColor: Colors.white,
                               backgroundImage: msg.senderAvatarUrl != null ? NetworkImage(msg.senderAvatarUrl!) : null,
                               child: msg.senderAvatarUrl == null
-                                  ? Text(msg.senderName[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent))
+                                  ? Text(msg.senderName[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary))
                                   : null,
                             ),
                             const SizedBox(width: 8),
@@ -540,7 +566,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             child: Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: isMe ? Colors.blueAccent : Colors.grey.shade200,
+                                color: isMe ? AppColors.primary : AppColors.surface,
+                                border: isMe ? null : Border.all(color: AppColors.border),
                                 borderRadius: BorderRadius.only(
                                   topLeft: const Radius.circular(16),
                                   topRight: const Radius.circular(16),
@@ -585,11 +612,15 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
         // Khung nhập chat
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.grey.shade300, blurRadius: 4)]),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: const Border(top: BorderSide(color: AppColors.border)),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, -4))],
+          ),
           child: Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.image, color: Colors.blue),
+                icon: const Icon(Icons.image_outlined, color: AppColors.primary),
                 onPressed: _pickAndSendImage,
               ),
               Expanded(
@@ -597,13 +628,15 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   controller: _chatController,
                   decoration: InputDecoration(
                     hintText: 'Nhập tin nhắn...',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
+                    filled: true,
+                    fillColor: AppColors.surfaceAlt,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   ),
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.send, color: Colors.blueAccent),
+                icon: const Icon(Icons.send, color: AppColors.primary),
                 onPressed: _sendMessage,
               )
             ],
@@ -681,9 +714,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: const [
-                      Icon(Icons.folder_open, size: 80, color: Colors.grey),
+                      Icon(Icons.folder_open, size: 80, color: AppColors.muted),
                       SizedBox(height: 16),
-                      Text('Chưa có tệp nào được đính kèm', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                      Text('Chưa có tệp nào được đính kèm', style: TextStyle(color: AppColors.muted, fontSize: 16)),
                     ],
                   ),
                 );
@@ -711,7 +744,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         }
                       },
                       child: ListTile(
-                        leading: const Icon(Icons.insert_drive_file, color: Colors.blueAccent, size: 32),
+                        leading: const Icon(Icons.insert_drive_file, color: AppColors.primary, size: 32),
                         title: Text(file['name'] ?? 'Tệp không tên', style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: const Text('Nhấn để xem tệp ở tab mới'),
 
@@ -720,7 +753,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                           children: [
                             IconButton(
                               tooltip: 'Tải xuống',
-                              icon: const Icon(Icons.download, color: Colors.blue),
+                              icon: const Icon(Icons.download, color: AppColors.primary),
                               onPressed: () async {
                                 if (urlString == null || urlString.isEmpty) return;
                                 final Uri url = Uri.parse(urlString);
@@ -733,7 +766,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             // Nút Xóa
                             IconButton(
                               tooltip: 'Xóa tệp',
-                              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                              icon: const Icon(Icons.delete_outline, color: AppColors.danger),
                               onPressed: () {
                                 showDialog(
                                   context: context,

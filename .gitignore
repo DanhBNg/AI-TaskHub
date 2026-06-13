@@ -50,33 +50,4 @@ android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 
 # AI Tools & Agents Cache
-.agents/
-.augment/
-.bob/
-.claude/
-.codebuddy/
-.commandcode/
-.continue/
-.cortex/
-.crush/
-.factory/
-.goose/
-.iflow/
-.junie/
-.kilocode/
-.kiro/
-.kode/
-.mcpjam/
-.mux/
-.neovate/
-.openhands/
-.pi/
-.pochi/
-.qoder/
-.qwen/
-.roo/
-.trae/
-.vibe/
-.windsurf/
-.zencoder/
 skills/

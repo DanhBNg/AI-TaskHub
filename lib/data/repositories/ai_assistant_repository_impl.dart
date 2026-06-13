@@ -12,7 +12,28 @@ class AiAssistantRepositoryImpl implements AiAssistantRepository {
     String message,
     String projectId,
     Map<String, dynamic> context,
+    List<AiChatMessageEntity> conversationHistory,
   ) {
-    return remoteDataSource.sendMessage(message, projectId, context);
+    return remoteDataSource.sendMessage(
+      message,
+      projectId,
+      context,
+      conversationHistory,
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> runAction(
+    String action,
+    String projectId,
+    Map<String, dynamic> context,
+    List<AiChatMessageEntity> conversationHistory,
+  ) {
+    return remoteDataSource.runAction(
+      action,
+      projectId,
+      context,
+      conversationHistory,
+    );
   }
 }

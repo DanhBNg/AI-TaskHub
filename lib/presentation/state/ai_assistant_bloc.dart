@@ -24,6 +24,21 @@ class SendMessageEvent extends AiAssistantEvent {
   List<Object?> get props => [message, projectId, context];
 }
 
+class RunAssistantActionEvent extends AiAssistantEvent {
+  final String action;
+  final String projectId;
+  final Map<String, dynamic> context;
+
+  RunAssistantActionEvent({
+    required this.action,
+    required this.projectId,
+    required this.context,
+  });
+
+  @override
+  List<Object?> get props => [action, projectId, context];
+}
+
 abstract class AiAssistantState extends Equatable {
   final List<AiChatMessageEntity> messages;
 
@@ -45,6 +60,20 @@ class AiAssistantLoaded extends AiAssistantState {
   const AiAssistantLoaded({required super.messages});
 }
 
+class AiAssistantActionReady extends AiAssistantState {
+  final String action;
+  final Map<String, dynamic> payload;
+
+  const AiAssistantActionReady({
+    required super.messages,
+    required this.action,
+    required this.payload,
+  });
+
+  @override
+  List<Object?> get props => [messages, action, payload];
+}
+
 class AiAssistantError extends AiAssistantState {
   final String error;
 
@@ -63,6 +92,10 @@ class AiAssistantBloc extends Bloc<AiAssistantEvent, AiAssistantState> {
   AiAssistantBloc({required this.aiAssistantRepository})
       : super(const AiAssistantInitial()) {
     on<SendMessageEvent>((event, emit) async {
+      final conversationHistory = state.messages.length <= 8
+          ? state.messages
+          : state.messages.sublist(state.messages.length - 8);
+
       final userMessage = AiChatMessageEntity(
         messageId: DateTime.now().microsecondsSinceEpoch.toString(),
         role: 'user',
@@ -78,6 +111,7 @@ class AiAssistantBloc extends Bloc<AiAssistantEvent, AiAssistantState> {
           event.message,
           event.projectId,
           event.context,
+          conversationHistory,
         );
         emit(AiAssistantLoaded(messages: [...updatedMessages, aiReply]));
       } catch (e) {
@@ -87,5 +121,139 @@ class AiAssistantBloc extends Bloc<AiAssistantEvent, AiAssistantState> {
         ));
       }
     });
+
+    on<RunAssistantActionEvent>((event, emit) async {
+      final conversationHistory = state.messages.length <= 8
+          ? state.messages
+          : state.messages.sublist(state.messages.length - 8);
+
+      emit(AiAssistantLoading(messages: state.messages));
+
+      try {
+        final payload = await aiAssistantRepository.runAction(
+          event.action,
+          event.projectId,
+          event.context,
+          conversationHistory,
+        );
+
+        if (event.action == 'SUMMARIZE' ||
+            event.action == 'FIND_TASK' ||
+            event.action == 'PRIORITIZE') {
+          final content = _formatActionReply(event.action, payload);
+          final aiReply = AiChatMessageEntity(
+            messageId: DateTime.now().microsecondsSinceEpoch.toString(),
+            role: 'model',
+            content: content,
+            timestamp: DateTime.now(),
+          );
+          emit(AiAssistantLoaded(messages: [...state.messages, aiReply]));
+          return;
+        }
+
+        emit(AiAssistantActionReady(
+          messages: state.messages,
+          action: event.action,
+          payload: payload,
+        ));
+      } catch (e) {
+        emit(AiAssistantError(
+          error: e.toString().replaceAll('Exception: ', ''),
+          messages: state.messages,
+        ));
+      }
+    });
+  }
+
+  String _formatActionReply(String action, Map<String, dynamic> payload) {
+    if (action == 'SUMMARIZE') {
+      final summary = (payload['summary'] ?? '').toString().trim();
+      return summary.isEmpty ? 'Chưa đủ dữ liệu để tóm tắt.' : summary;
+    }
+
+    if (action == 'FIND_TASK') {
+      final reply = (payload['reply'] ?? '').toString().trim();
+      final tasks = _readTaskInsightList(payload['tasks']);
+
+      if (tasks.isEmpty) {
+        return reply.isEmpty
+            ? 'Chưa tìm thấy task phù hợp trong dữ liệu hiện tại.'
+            : reply;
+      }
+
+      final buffer = StringBuffer(
+        reply.isEmpty ? 'Tôi tìm thấy các task phù hợp:' : reply,
+      );
+
+      for (final task in tasks) {
+        buffer
+          ..writeln()
+          ..writeln()
+          ..write('- ${task['title']}');
+
+        final projectName = (task['projectName'] ?? '').toString().trim();
+        final status = (task['status'] ?? '').toString().trim();
+        final priority = (task['priority'] ?? '').toString().trim();
+        final dueDate = (task['dueDate'] ?? '').toString().trim();
+        final reason = (task['reason'] ?? '').toString().trim();
+        final meta = [
+          if (projectName.isNotEmpty) projectName,
+          if (status.isNotEmpty) status,
+          if (priority.isNotEmpty) priority,
+          if (dueDate.isNotEmpty) dueDate,
+        ];
+
+        if (meta.isNotEmpty) buffer.write(' (${meta.join(' | ')})');
+        if (reason.isNotEmpty) buffer.write('\n  Lý do: $reason');
+      }
+
+      return buffer.toString();
+    }
+
+    final reply = (payload['reply'] ?? '').toString().trim();
+    final tasks = _readTaskInsightList(payload['prioritizedTasks']);
+
+    if (tasks.isEmpty) {
+      return reply.isEmpty
+          ? 'Chưa đủ dữ liệu để sắp xếp ưu tiên task.'
+          : reply;
+    }
+
+    final buffer = StringBuffer(
+      reply.isEmpty ? 'Thứ tự task nên ưu tiên:' : reply,
+    );
+
+    for (var index = 0; index < tasks.length; index++) {
+      final task = tasks[index];
+      final rank = task['rank'] ?? index + 1;
+      final reason = (task['reason'] ?? '').toString().trim();
+      final priority = (task['priority'] ?? '').toString().trim();
+      final status = (task['status'] ?? '').toString().trim();
+      final dueDate = (task['dueDate'] ?? '').toString().trim();
+      final meta = [
+        if (priority.isNotEmpty) priority,
+        if (status.isNotEmpty) status,
+        if (dueDate.isNotEmpty) dueDate,
+      ];
+
+      buffer
+        ..writeln()
+        ..writeln()
+        ..write('$rank. ${task['title']}');
+
+      if (meta.isNotEmpty) buffer.write(' (${meta.join(' | ')})');
+      if (reason.isNotEmpty) buffer.write('\n   Vì: $reason');
+    }
+
+    return buffer.toString();
+  }
+
+  List<Map<String, dynamic>> _readTaskInsightList(dynamic rawTasks) {
+    if (rawTasks is! List) return [];
+
+    return rawTasks
+        .whereType<Map>()
+        .map((task) => Map<String, dynamic>.from(task))
+        .toList();
   }
 }

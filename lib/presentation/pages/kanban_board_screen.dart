@@ -4,9 +4,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskhub_ai/presentation/pages/task_detail_sceen.dart';
+import '../../core/config/app_config.dart';
 import '../../domain/entities/task_entity.dart';
 import '../state/project_bloc.dart';
 import '../state/task_bloc.dart';
+import '../theme/app_theme.dart';
 import 'create_task_screen.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -269,7 +271,7 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
 
                     try {
                       final response = await http.post(
-                        Uri.parse('https://taskhub-backend-ords.onrender.com/api/generate-tasks'),
+                        AppConfig.apiUri('/api/generate-tasks'),
                         headers: {'Content-Type': 'application/json'},
                         body: jsonEncode({'prompt': promptController.text.trim()}),
                       );
@@ -366,10 +368,10 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildKanbanColumn('todo', 'Cần làm', Colors.grey.shade200, state.tasks),
-                  _buildKanbanColumn('in_progress', 'Đang làm', Colors.blue.shade50, state.tasks),
-                  _buildKanbanColumn('review', 'Chờ duyệt', Colors.orange.shade50, state.tasks),
-                  _buildKanbanColumn('done', 'Hoàn thành', Colors.green.shade50, state.tasks),
+                  _buildKanbanColumn('todo', 'Cần làm', AppColors.muted, state.tasks),
+                  _buildKanbanColumn('in_progress', 'Đang làm', AppColors.primary, state.tasks),
+                  _buildKanbanColumn('review', 'Chờ duyệt', AppColors.warning, state.tasks),
+                  _buildKanbanColumn('done', 'Hoàn thành', AppColors.success, state.tasks),
                 ],
               ),
             );
@@ -505,7 +507,7 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
   }
 
   // kéo th
-  Widget _buildKanbanColumn(String status, String title, Color bgColor, List<TaskEntity> allTasks) {
+  Widget _buildKanbanColumn(String status, String title, Color accentColor, List<TaskEntity> allTasks) {
     final columnTasks = allTasks.where((t) => t.status == status).toList();
 
     return DragTarget<TaskEntity>(
@@ -516,64 +518,227 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
         }
       },
       builder: (context, candidateData, rejectedData) {
+        final isHovering = candidateData.isNotEmpty;
+        final baseTint = accentColor.withValues(alpha: 0.055);
+        final hoverTint = accentColor.withValues(alpha: 0.11);
         return Container(
-          width: 300,
+          width: 312,
           margin: const EdgeInsets.all(8),
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: isHovering ? hoverTint : baseTint,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(
+              color: isHovering ? accentColor : accentColor.withValues(alpha: 0.18),
+              width: isHovering ? 1.4 : 1,
+            ),
+          ),
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text('$title (${columnTasks.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: columnTasks.length,
-                  itemBuilder: (context, index) {
-                    final task = columnTasks[index];
-                    return Draggable<TaskEntity>(
-                      data: task,
-                      onDragUpdate: (details) => _checkAutoScroll(details.globalPosition),
-                      onDragEnd: (details) => _stopAutoScroll(),
-                      onDraggableCanceled: (velocity, offset) => _stopAutoScroll(),
-                      feedback: Material(
-                        elevation: 4,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          width: 280, padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                          child: Text(task.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.82),
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  border: Border.all(color: accentColor.withValues(alpha: 0.16)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: accentColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
                         ),
                       ),
-                      childWhenDragging: Opacity(
-                        opacity: 0.3,
-                        child: Card(child: ListTile(title: Text(task.title))),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: accentColor.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(AppRadii.sm),
                       ),
-                      child: InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => TaskDetailScreen(task: task),
+                      child: Text(
+                        '${columnTasks.length}',
+                        style: TextStyle(
+                          color: accentColor,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: columnTasks.isEmpty
+                    ? const SizedBox.expand()
+                    : ListView.builder(
+                        itemCount: columnTasks.length,
+                        itemBuilder: (context, index) {
+                          final task = columnTasks[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Draggable<TaskEntity>(
+                              data: task,
+                              onDragUpdate: (details) => _checkAutoScroll(details.globalPosition),
+                              onDragEnd: (details) => _stopAutoScroll(),
+                              onDraggableCanceled: (velocity, offset) => _stopAutoScroll(),
+                              feedback: Material(
+                                elevation: 8,
+                                color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(AppRadii.md),
+                                child: SizedBox(
+                                  width: 286,
+                                  child: _TaskCard(task: task, accentColor: accentColor),
+                                ),
+                              ),
+                              childWhenDragging: Opacity(
+                                opacity: 0.35,
+                                child: _TaskCard(task: task, accentColor: accentColor),
+                              ),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(AppRadii.md),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => TaskDetailScreen(task: task),
+                                    ),
+                                  );
+                                },
+                                child: _TaskCard(task: task, accentColor: accentColor),
+                              ),
                             ),
                           );
                         },
-                        child: Card(
-                          child: ListTile(
-                            title: Text(task.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text(task.description, maxLines: 1, overflow: TextOverflow.ellipsis),
-                          ),
-                        ),
                       ),
-                    );
-                  },
-                ),
               )
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _TaskCard extends StatelessWidget {
+  final TaskEntity task;
+  final Color accentColor;
+
+  const _TaskCard({
+    required this.task,
+    required this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    task.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _PriorityDot(priority: task.priority),
+              ],
+            ),
+            if (task.description.trim().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                task.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: AppColors.muted, height: 1.35),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.flag_outlined, size: 16, color: accentColor),
+                const SizedBox(width: 4),
+                Text(
+                  task.priority,
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+                const Spacer(),
+                if (task.assigneeNames.isNotEmpty)
+                  Flexible(
+                    child: Text(
+                      task.assigneeNames.length == 1
+                          ? task.assigneeNames.first
+                          : '${task.assigneeNames.length} người',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PriorityDot extends StatelessWidget {
+  final String priority;
+
+  const _PriorityDot({required this.priority});
+
+  @override
+  Widget build(BuildContext context) {
+    final normalized = priority.toLowerCase();
+    final color = normalized == 'high'
+        ? AppColors.danger
+        : normalized == 'medium'
+            ? AppColors.warning
+            : AppColors.success;
+
+    return Tooltip(
+      message: 'Ưu tiên: $priority',
+      child: Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+        ),
+      ),
     );
   }
 }
