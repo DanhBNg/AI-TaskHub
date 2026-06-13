@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../domain/entities/task_entity.dart';
+import '../../core/config/app_config.dart';
 import '../../../domain/entities/message_entity.dart';
 import '../../presentation/state/message_bloc.dart';
 import 'package:image_picker/image_picker.dart';
@@ -271,7 +272,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       }).toList();
 
       final response = await http.post(
-        Uri.parse('https://taskhub-backend-ords.onrender.com/api/summarize-chat'),
+        AppConfig.apiUri('/api/summarize-chat'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'messages': chatLog}),
       );

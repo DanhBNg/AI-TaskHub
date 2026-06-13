@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../core/config/app_config.dart';
+import '../../domain/entities/ai_chat_message_entity.dart';
 import '../models/ai_chat_message_model.dart';
 
 abstract class AiAssistantRemoteDataSource {
@@ -9,11 +11,18 @@ abstract class AiAssistantRemoteDataSource {
     String message,
     String projectId,
     Map<String, dynamic> context,
+    List<AiChatMessageEntity> conversationHistory,
+  );
+
+  Future<Map<String, dynamic>> runAction(
+    String action,
+    String projectId,
+    Map<String, dynamic> context,
+    List<AiChatMessageEntity> conversationHistory,
   );
 }
 
 class AiAssistantRemoteDataSourceImpl implements AiAssistantRemoteDataSource {
-  static const String _baseUrl = 'https://taskhub-backend-ords.onrender.com';
   final http.Client client;
 
   AiAssistantRemoteDataSourceImpl({required this.client});
@@ -23,15 +32,25 @@ class AiAssistantRemoteDataSourceImpl implements AiAssistantRemoteDataSource {
     String message,
     String projectId,
     Map<String, dynamic> context,
+    List<AiChatMessageEntity> conversationHistory,
   ) async {
     try {
       final response = await client.post(
-        Uri.parse('$_baseUrl/api/assistant/chat'),
+        AppConfig.apiUri('/api/assistant/chat'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'userMessage': message,
           'projectId': projectId,
           'context': context,
+          'conversationHistory': conversationHistory
+              .map(
+                (message) => {
+                  'role': message.role,
+                  'content': message.content,
+                  'timestamp': message.timestamp.toIso8601String(),
+                },
+              )
+              .toList(),
         }),
       );
 
@@ -48,6 +67,45 @@ class AiAssistantRemoteDataSourceImpl implements AiAssistantRemoteDataSource {
       });
     } catch (e) {
       throw Exception('Khong the goi tro ly AI: $e');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> runAction(
+    String action,
+    String projectId,
+    Map<String, dynamic> context,
+    List<AiChatMessageEntity> conversationHistory,
+  ) async {
+    try {
+      final response = await client.post(
+        AppConfig.apiUri('/api/assistant/action'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'action': action,
+          'projectId': projectId,
+          'context': context,
+          'conversationHistory': conversationHistory
+              .map(
+                (message) => {
+                  'role': message.role,
+                  'content': message.content,
+                  'timestamp': message.timestamp.toIso8601String(),
+                },
+              )
+              .toList(),
+        }),
+      );
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(decoded['error'] ?? 'Server AI tra ve loi');
+      }
+
+      return decoded;
+    } catch (e) {
+      throw Exception('Khong the chay hanh dong AI: $e');
     }
   }
 }

@@ -5,5 +5,13 @@ abstract class AiAssistantRepository {
     String message,
     String projectId,
     Map<String, dynamic> context,
+    List<AiChatMessageEntity> conversationHistory,
+  );
+
+  Future<Map<String, dynamic>> runAction(
+    String action,
+    String projectId,
+    Map<String, dynamic> context,
+    List<AiChatMessageEntity> conversationHistory,
   );
 }
