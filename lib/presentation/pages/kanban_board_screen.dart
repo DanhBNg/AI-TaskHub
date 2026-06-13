@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskhub_ai/presentation/pages/task_detail_sceen.dart';
+import '../../core/config/app_config.dart';
 import '../../domain/entities/task_entity.dart';
 import '../state/project_bloc.dart';
 import '../state/task_bloc.dart';
@@ -270,7 +271,7 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
 
                     try {
                       final response = await http.post(
-                        Uri.parse('https://taskhub-backend-ords.onrender.com/api/generate-tasks'),
+                        AppConfig.apiUri('/api/generate-tasks'),
                         headers: {'Content-Type': 'application/json'},
                         body: jsonEncode({'prompt': promptController.text.trim()}),
                       );
