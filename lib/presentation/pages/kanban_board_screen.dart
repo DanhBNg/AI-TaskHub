@@ -238,8 +238,14 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
               title: const Row(
                 children: [
                   Icon(Icons.auto_awesome, color: Colors.purple),
-                  SizedBox(width: 8),
-                  Text('AI Chia Việc Thông Minh'),
+                  SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      'AI Chia Việc Thông Minh',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
               content: _isAILoading
@@ -250,14 +256,17 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
                       children: [CircularProgressIndicator(), SizedBox(height: 16), Text('AI đang suy nghĩ...')]
                   ))
               )
-                  : TextField(
-                controller: promptController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  hintText: 'VD: Làm tính năng đăng nhập bằng Google và Facebook...',
-                  border: OutlineInputBorder(),
-                ),
-              ),
+                  : SizedBox(
+                      width: 320,
+                      child: TextField(
+                        controller: promptController,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          hintText: 'VD: Làm tính năng đăng nhập bằng Google và Facebook...',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
               actions: _isAILoading
                   ? []
                   : [
