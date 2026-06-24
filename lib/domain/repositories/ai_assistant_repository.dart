@@ -14,4 +14,8 @@ abstract class AiAssistantRepository {
     Map<String, dynamic> context,
     List<AiChatMessageEntity> conversationHistory,
   );
+
+  Future<String> summarizeChat(List<Map<String, String>> messages);
+
+  Future<List<Map<String, dynamic>>> generateTasks(String prompt);
 }

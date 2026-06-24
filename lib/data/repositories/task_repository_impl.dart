@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../domain/entities/task_entity.dart';
 import '../../domain/repositories/task_repository.dart';
 import '../datasources/task_remote_data_source.dart';
@@ -5,6 +7,7 @@ import '../models/task_model.dart';
 
 class TaskRepositoryImpl implements TaskRepository {
   final TaskRemoteDataSource remoteDataSource;
+
   TaskRepositoryImpl({required this.remoteDataSource});
 
   @override
@@ -35,8 +38,6 @@ class TaskRepositoryImpl implements TaskRepository {
     await remoteDataSource.updateTaskStatus(taskId, newStatus);
   }
 
-  String firestoreId() => DateTime.now().millisecondsSinceEpoch.toString();
-
   @override
   Future<void> updateTask(TaskEntity task) async {
     final taskModel = TaskModel(
@@ -59,5 +60,27 @@ class TaskRepositoryImpl implements TaskRepository {
   @override
   Future<void> deleteTask(String taskId) async {
     await remoteDataSource.deleteTask(taskId);
+  }
+
+  @override
+  Stream<List<Map<String, dynamic>>> watchAttachments(String taskId) {
+    return remoteDataSource.watchAttachments(taskId);
+  }
+
+  @override
+  Future<void> uploadAttachment(
+    String taskId,
+    String fileName,
+    Uint8List fileBytes,
+  ) async {
+    await remoteDataSource.uploadAttachment(taskId, fileName, fileBytes);
+  }
+
+  @override
+  Future<void> deleteAttachment(
+    String taskId,
+    Map<String, dynamic> fileData,
+  ) async {
+    await remoteDataSource.deleteAttachment(taskId, fileData);
   }
 }

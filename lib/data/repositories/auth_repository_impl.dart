@@ -1,7 +1,10 @@
+import 'dart:typed_data';
+
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_data_source.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
@@ -32,13 +35,34 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<UserEntity> signUpWithEmail({required String email, required String password, required String fullName}) async {
+  Future<UserEntity> signUpWithEmail({
+    required String email,
+    required String password,
+    required String fullName,
+  }) async {
     try {
       return await remoteDataSource.signUpWithEmail(email, password, fullName);
     } on FirebaseAuthException catch (e) {
       throw Exception(_handleFirebaseAuthError(e.code));
     } catch (e) {
       throw Exception('Đã xảy ra lỗi không xác định: $e');
+    }
+  }
+
+  @override
+  Future<void> updateProfile({
+    required String fullName,
+    Uint8List? avatarBytes,
+  }) async {
+    try {
+      await remoteDataSource.updateProfile(
+        fullName: fullName,
+        avatarBytes: avatarBytes,
+      );
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_handleFirebaseAuthError(e.code));
+    } catch (e) {
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
   }
 

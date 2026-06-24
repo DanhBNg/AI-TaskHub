@@ -20,6 +20,10 @@ abstract class AiAssistantRemoteDataSource {
     Map<String, dynamic> context,
     List<AiChatMessageEntity> conversationHistory,
   );
+
+  Future<String> summarizeChat(List<Map<String, String>> messages);
+
+  Future<List<Map<String, dynamic>>> generateTasks(String prompt);
 }
 
 class AiAssistantRemoteDataSourceImpl implements AiAssistantRemoteDataSource {
@@ -57,7 +61,7 @@ class AiAssistantRemoteDataSourceImpl implements AiAssistantRemoteDataSource {
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(decoded['error'] ?? 'Server AI tra ve loi');
+        throw Exception(decoded['error'] ?? 'Server AI trả về lỗi');
       }
 
       return AiChatMessageModel.fromJson({
@@ -66,7 +70,7 @@ class AiAssistantRemoteDataSourceImpl implements AiAssistantRemoteDataSource {
         'suggestedActions': decoded['suggestedActions'] ?? [],
       });
     } catch (e) {
-      throw Exception('Khong the goi tro ly AI: $e');
+      throw Exception('Không thể gọi trợ lý AI: $e');
     }
   }
 
@@ -100,12 +104,60 @@ class AiAssistantRemoteDataSourceImpl implements AiAssistantRemoteDataSource {
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(decoded['error'] ?? 'Server AI tra ve loi');
+        throw Exception(decoded['error'] ?? 'Server AI trả về lỗi');
       }
 
       return decoded;
     } catch (e) {
-      throw Exception('Khong the chay hanh dong AI: $e');
+      throw Exception('Không thể chạy hành động AI: $e');
+    }
+  }
+
+  @override
+  Future<String> summarizeChat(List<Map<String, String>> messages) async {
+    try {
+      final response = await client.post(
+        AppConfig.apiUri('/api/summarize-chat'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'messages': messages}),
+      );
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(decoded['error'] ?? 'Server AI trả về lỗi');
+      }
+
+      return (decoded['summary'] ?? '').toString();
+    } catch (e) {
+      throw Exception('Không thể tóm tắt hội thoại: $e');
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> generateTasks(String prompt) async {
+    try {
+      final response = await client.post(
+        AppConfig.apiUri('/api/generate-tasks'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'prompt': prompt}),
+      );
+
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(decoded['error'] ?? 'Server AI trả về lỗi');
+      }
+
+      final rawTasks = decoded['tasks'];
+      if (rawTasks is! List) return <Map<String, dynamic>>[];
+
+      return rawTasks
+          .whereType<Map>()
+          .map((task) => Map<String, dynamic>.from(task))
+          .toList();
+    } catch (e) {
+      throw Exception('Không thể sinh task từ AI: $e');
     }
   }
 }

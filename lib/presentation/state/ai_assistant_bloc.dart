@@ -39,6 +39,24 @@ class RunAssistantActionEvent extends AiAssistantEvent {
   List<Object?> get props => [action, projectId, context];
 }
 
+class SummarizeChatEvent extends AiAssistantEvent {
+  final List<Map<String, String>> messages;
+
+  SummarizeChatEvent({required this.messages});
+
+  @override
+  List<Object?> get props => [messages];
+}
+
+class GenerateTasksEvent extends AiAssistantEvent {
+  final String prompt;
+
+  GenerateTasksEvent({required this.prompt});
+
+  @override
+  List<Object?> get props => [prompt];
+}
+
 abstract class AiAssistantState extends Equatable {
   final List<AiChatMessageEntity> messages;
 
@@ -74,13 +92,34 @@ class AiAssistantActionReady extends AiAssistantState {
   List<Object?> get props => [messages, action, payload];
 }
 
+class AiAssistantSummaryReady extends AiAssistantState {
+  final String summary;
+
+  const AiAssistantSummaryReady({
+    required this.summary,
+    required super.messages,
+  });
+
+  @override
+  List<Object?> get props => [messages, summary];
+}
+
+class AiAssistantTasksGenerated extends AiAssistantState {
+  final List<Map<String, dynamic>> generatedTasks;
+
+  const AiAssistantTasksGenerated({
+    required this.generatedTasks,
+    required super.messages,
+  });
+
+  @override
+  List<Object?> get props => [messages, generatedTasks];
+}
+
 class AiAssistantError extends AiAssistantState {
   final String error;
 
-  const AiAssistantError({
-    required this.error,
-    required super.messages,
-  });
+  const AiAssistantError({required this.error, required super.messages});
 
   @override
   List<Object?> get props => [error, messages];
@@ -90,7 +129,7 @@ class AiAssistantBloc extends Bloc<AiAssistantEvent, AiAssistantState> {
   final AiAssistantRepository aiAssistantRepository;
 
   AiAssistantBloc({required this.aiAssistantRepository})
-      : super(const AiAssistantInitial()) {
+    : super(const AiAssistantInitial()) {
     on<SendMessageEvent>((event, emit) async {
       final conversationHistory = state.messages.length <= 8
           ? state.messages
@@ -115,10 +154,12 @@ class AiAssistantBloc extends Bloc<AiAssistantEvent, AiAssistantState> {
         );
         emit(AiAssistantLoaded(messages: [...updatedMessages, aiReply]));
       } catch (e) {
-        emit(AiAssistantError(
-          error: e.toString().replaceAll('Exception: ', ''),
-          messages: updatedMessages,
-        ));
+        emit(
+          AiAssistantError(
+            error: e.toString().replaceAll('Exception: ', ''),
+            messages: updatedMessages,
+          ),
+        );
       }
     });
 
@@ -151,16 +192,61 @@ class AiAssistantBloc extends Bloc<AiAssistantEvent, AiAssistantState> {
           return;
         }
 
-        emit(AiAssistantActionReady(
-          messages: state.messages,
-          action: event.action,
-          payload: payload,
-        ));
+        emit(
+          AiAssistantActionReady(
+            messages: state.messages,
+            action: event.action,
+            payload: payload,
+          ),
+        );
       } catch (e) {
-        emit(AiAssistantError(
-          error: e.toString().replaceAll('Exception: ', ''),
-          messages: state.messages,
-        ));
+        emit(
+          AiAssistantError(
+            error: e.toString().replaceAll('Exception: ', ''),
+            messages: state.messages,
+          ),
+        );
+      }
+    });
+
+    on<SummarizeChatEvent>((event, emit) async {
+      emit(AiAssistantLoading(messages: state.messages));
+
+      try {
+        final summary = await aiAssistantRepository.summarizeChat(
+          event.messages,
+        );
+        emit(
+          AiAssistantSummaryReady(summary: summary, messages: state.messages),
+        );
+      } catch (e) {
+        emit(
+          AiAssistantError(
+            error: e.toString().replaceAll('Exception: ', ''),
+            messages: state.messages,
+          ),
+        );
+      }
+    });
+
+    on<GenerateTasksEvent>((event, emit) async {
+      emit(AiAssistantLoading(messages: state.messages));
+
+      try {
+        final tasks = await aiAssistantRepository.generateTasks(event.prompt);
+        emit(
+          AiAssistantTasksGenerated(
+            generatedTasks: tasks,
+            messages: state.messages,
+          ),
+        );
+      } catch (e) {
+        emit(
+          AiAssistantError(
+            error: e.toString().replaceAll('Exception: ', ''),
+            messages: state.messages,
+          ),
+        );
       }
     });
   }
@@ -214,9 +300,7 @@ class AiAssistantBloc extends Bloc<AiAssistantEvent, AiAssistantState> {
     final tasks = _readTaskInsightList(payload['prioritizedTasks']);
 
     if (tasks.isEmpty) {
-      return reply.isEmpty
-          ? 'Chưa đủ dữ liệu để sắp xếp ưu tiên task.'
-          : reply;
+      return reply.isEmpty ? 'Chưa đủ dữ liệu để sắp xếp ưu tiên task.' : reply;
     }
 
     final buffer = StringBuffer(

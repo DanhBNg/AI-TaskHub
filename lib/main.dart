@@ -4,8 +4,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskhub_ai/presentation/state/ai_assistant_bloc.dart';
+import 'package:taskhub_ai/presentation/state/attachment_bloc.dart';
 import 'package:taskhub_ai/presentation/state/invite_bloc.dart';
 import 'package:taskhub_ai/presentation/state/message_bloc.dart';
+import 'package:taskhub_ai/presentation/state/profile_bloc.dart';
 import 'package:taskhub_ai/presentation/state/project_bloc.dart';
 import 'package:taskhub_ai/presentation/state/task_bloc.dart';
 import 'package:taskhub_ai/presentation/theme/app_theme.dart';
@@ -21,9 +23,7 @@ import 'presentation/state/auth_bloc.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   await di.init();
 
@@ -37,15 +37,13 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<AuthBloc>(
-          create: (_) => di.sl<AuthBloc>(),
-        ),
+        BlocProvider<AuthBloc>(create: (_) => di.sl<AuthBloc>()),
+        BlocProvider<ProfileBloc>(create: (_) => di.sl<ProfileBloc>()),
         BlocProvider<ProjectBloc>(create: (_) => di.sl<ProjectBloc>()),
         BlocProvider<TaskBloc>(create: (_) => di.sl<TaskBloc>()),
+        BlocProvider<AttachmentBloc>(create: (_) => di.sl<AttachmentBloc>()),
         BlocProvider<MessageBloc>(create: (_) => di.sl<MessageBloc>()),
-        BlocProvider<AiAssistantBloc>(
-          create: (_) => di.sl<AiAssistantBloc>(),
-        ),
+        BlocProvider<AiAssistantBloc>(create: (_) => di.sl<AiAssistantBloc>()),
         BlocProvider<InviteBloc>(
           create: (_) => di.sl<InviteBloc>()..add(LoadInvites()),
         ),

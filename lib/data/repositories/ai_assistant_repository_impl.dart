@@ -36,4 +36,14 @@ class AiAssistantRepositoryImpl implements AiAssistantRepository {
       conversationHistory,
     );
   }
+
+  @override
+  Future<String> summarizeChat(List<Map<String, String>> messages) {
+    return remoteDataSource.summarizeChat(messages);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> generateTasks(String prompt) {
+    return remoteDataSource.generateTasks(prompt);
+  }
 }

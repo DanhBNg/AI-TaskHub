@@ -1,7 +1,8 @@
+import 'dart:typed_data';
+
 import '../entities/user_entity.dart';
 
 abstract class AuthRepository {
-  // trag thai user
   Stream<UserEntity?> get authStateChanges;
 
   Future<UserEntity> signInWithEmail(String email, String password);
@@ -11,6 +12,11 @@ abstract class AuthRepository {
     required String password,
     required String fullName,
   });
-  
+
+  Future<void> updateProfile({
+    required String fullName,
+    Uint8List? avatarBytes,
+  });
+
   Future<void> signOut();
 }

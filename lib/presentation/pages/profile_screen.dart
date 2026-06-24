@@ -1,11 +1,11 @@
 import 'dart:typed_data';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../state/profile_bloc.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_drawer.dart';
 
@@ -21,7 +21,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final TextEditingController _nameController = TextEditingController();
 
   Uint8List? _selectedImageBytes;
-  bool _isLoading = false;
 
   @override
   void initState() {
@@ -44,66 +43,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _updateProfile() async {
+  Future<void> _submitProfileUpdate() async {
     if (_nameController.text.trim().isEmpty) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    final bloc = context.read<ProfileBloc>();
+    final resultFuture = bloc.stream.firstWhere(
+      (state) => state is ProfileSuccess || state is ProfileError,
+    );
 
-    try {
-      String? newPhotoUrl = currentUser?.photoURL;
+    bloc.add(
+      UpdateProfileRequested(
+        fullName: _nameController.text.trim(),
+        avatarBytes: _selectedImageBytes,
+      ),
+    );
 
-      if (_selectedImageBytes != null) {
-        final fileName = 'avatar_${currentUser!.uid}.jpg';
-        final ref = FirebaseStorage.instance.ref().child('avatars/$fileName');
+    final result = await resultFuture;
+    if (!mounted) return;
 
-        await ref.putData(
-          _selectedImageBytes!,
-          SettableMetadata(contentType: 'image/jpeg'),
-        );
-        newPhotoUrl = await ref.getDownloadURL();
+    if (result is ProfileSuccess) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cập nhật thành công!'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
       }
+      return;
+    }
 
-      await currentUser!.updateDisplayName(_nameController.text.trim());
-      if (newPhotoUrl != null) {
-        await currentUser!.updatePhotoURL(newPhotoUrl);
-      }
-
-      await FirebaseFirestore.instance.collection('USERS').doc(currentUser!.uid).update({
-        'fullName': _nameController.text.trim(),
-        'avatarUrl': newPhotoUrl,
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cập nhật thành công!'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-        if (Navigator.canPop(context)) {
-          Navigator.pop(context);
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi: $e'),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-      }
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+    if (result is ProfileError) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi: ${result.message}'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<ProfileBloc>().state is ProfileUpdating;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Thông tin cá nhân')),
       drawer: const AppDrawer(currentIndex: 3),
@@ -135,9 +119,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 backgroundImage: _selectedImageBytes != null
                                     ? MemoryImage(_selectedImageBytes!)
                                     : (currentUser?.photoURL != null
-                                        ? NetworkImage(currentUser!.photoURL!)
-                                        : null) as ImageProvider?,
-                                child: (_selectedImageBytes == null &&
+                                              ? NetworkImage(
+                                                  currentUser!.photoURL!,
+                                                )
+                                              : null)
+                                          as ImageProvider?,
+                                child:
+                                    (_selectedImageBytes == null &&
                                         currentUser?.photoURL == null)
                                     ? const Icon(
                                         Icons.person,
@@ -149,7 +137,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             IconButton.filled(
                               tooltip: 'Đổi ảnh đại diện',
-                              onPressed: _pickImage,
+                              onPressed: isLoading ? null : _pickImage,
                               icon: const Icon(Icons.camera_alt_outlined),
                             ),
                           ],
@@ -159,10 +147,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Text(
                         'Hồ sơ của bạn',
                         textAlign: TextAlign.center,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge
-                            ?.copyWith(fontWeight: FontWeight.w800),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       TextField(
@@ -176,8 +163,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       SizedBox(
                         height: 50,
                         child: ElevatedButton.icon(
-                          onPressed: _isLoading ? null : _updateProfile,
-                          icon: _isLoading
+                          onPressed: isLoading ? null : _submitProfileUpdate,
+                          icon: isLoading
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
@@ -201,4 +188,3 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
-
