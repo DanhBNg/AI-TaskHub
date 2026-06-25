@@ -69,6 +69,12 @@ class _StartupSplash extends StatefulWidget {
 
 class _StartupSplashState extends State<_StartupSplash> {
   bool _ready = false;
+  bool _didPrecacheLogo = false;
+  static const _logoProvider = ResizeImage(
+    AssetImage('assets/branding/taskhub_logo.png'),
+    width: 248,
+    height: 248,
+  );
 
   @override
   void initState() {
@@ -78,6 +84,14 @@ class _StartupSplashState extends State<_StartupSplash> {
         setState(() => _ready = true);
       }
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didPrecacheLogo) return;
+    _didPrecacheLogo = true;
+    unawaited(precacheImage(_logoProvider, context));
   }
 
   @override
@@ -95,10 +109,11 @@ class _StartupSplashState extends State<_StartupSplash> {
               ClipRRect(
                 borderRadius: BorderRadius.all(Radius.circular(32)),
                 child: Image(
-                  image: AssetImage('assets/branding/taskhub_logo.png'),
+                  image: _logoProvider,
                   width: 124,
                   height: 124,
                   fit: BoxFit.cover,
+                  filterQuality: FilterQuality.medium,
                 ),
               ),
               SizedBox(height: AppSpacing.lg),

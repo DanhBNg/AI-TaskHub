@@ -17,7 +17,9 @@ class AppDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
+      key: ValueKey(currentIndex),
       child: ListView(
+        key: ValueKey('drawer-list-$currentIndex'),
         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         children: [
           StreamBuilder<DocumentSnapshot>(
@@ -35,8 +37,9 @@ class AppDrawer extends StatelessWidget {
               }
 
               final userData = snapshot.data!.data() as Map<String, dynamic>;
-              final email =
-                  userData['email'] ?? FirebaseAuth.instance.currentUser?.email ?? '';
+              final email = userData['email'] ??
+                  FirebaseAuth.instance.currentUser?.email ??
+                  '';
               final displayName = userData['fullName'] ?? email.split('@')[0];
               final avatarUrl = userData['avatarUrl'];
 
@@ -150,14 +153,15 @@ class AppDrawer extends StatelessWidget {
           ),
         ),
         onTap: () {
-          Navigator.pop(context);
+          final drawerNavigator = Navigator.of(context);
+          final pageNavigator = Navigator.of(context, rootNavigator: true);
+          drawerNavigator.pop();
 
-          if (!isSelected) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => targetScreen),
-            );
-          }
+          if (isSelected) return;
+
+          pageNavigator.pushReplacement(
+            MaterialPageRoute(builder: (_) => targetScreen),
+          );
         },
       ),
     );
