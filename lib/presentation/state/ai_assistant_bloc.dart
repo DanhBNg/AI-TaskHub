@@ -28,15 +28,22 @@ class RunAssistantActionEvent extends AiAssistantEvent {
   final String action;
   final String projectId;
   final Map<String, dynamic> context;
+  final bool ignoreConversationHistory;
 
   RunAssistantActionEvent({
     required this.action,
     required this.projectId,
     required this.context,
+    this.ignoreConversationHistory = false,
   });
 
   @override
-  List<Object?> get props => [action, projectId, context];
+  List<Object?> get props => [
+        action,
+        projectId,
+        context,
+        ignoreConversationHistory,
+      ];
 }
 
 class SummarizeChatEvent extends AiAssistantEvent {
@@ -164,9 +171,11 @@ class AiAssistantBloc extends Bloc<AiAssistantEvent, AiAssistantState> {
     });
 
     on<RunAssistantActionEvent>((event, emit) async {
-      final conversationHistory = state.messages.length <= 8
-          ? state.messages
-          : state.messages.sublist(state.messages.length - 8);
+      final conversationHistory = event.ignoreConversationHistory
+          ? <AiChatMessageEntity>[]
+          : state.messages.length <= 8
+              ? state.messages
+              : state.messages.sublist(state.messages.length - 8);
 
       emit(AiAssistantLoading(messages: state.messages));
 
