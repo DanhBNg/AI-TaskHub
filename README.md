@@ -61,11 +61,6 @@ Live demo: https://ai-project-manager-12d8d.web.app/
 
 Repo backend AI: https://github.com/DanhBNg/taskhub-backend
 
-### Web Admin Liên Quan
-
-Hệ thống có thêm giao diện Web Admin dùng để theo dõi dữ liệu tổng quan và hỗ trợ quản trị ở mức hệ thống.
-
-Repo Web Admin: https://github.com/DanhBNg/taskhub-admin
 
 ## Cấu Hình Backend AI
 
