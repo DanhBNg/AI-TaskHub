@@ -1,6 +1,6 @@
 import { performance } from 'node:perf_hooks';
 
-const apiKey = 'REMOVED_FIREBASE_API_KEY';
+const apiKey = process.env.FIREBASE_API_KEY;
 const projectId = 'ai-project-manager-12d8d';
 
 const email = process.env.PERF_EMAIL;
@@ -8,8 +8,8 @@ const password = process.env.PERF_PASSWORD;
 const vus = Number.parseInt(process.env.LOAD_VUS || '10', 10);
 const iterationsPerVu = Number.parseInt(process.env.LOAD_ITERATIONS || '5', 10);
 
-if (!email || !password) {
-  throw new Error('Missing PERF_EMAIL or PERF_PASSWORD environment variable.');
+if (!apiKey || !email || !password) {
+  throw new Error('Missing FIREBASE_API_KEY, PERF_EMAIL or PERF_PASSWORD environment variable.');
 }
 
 const authUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`;
