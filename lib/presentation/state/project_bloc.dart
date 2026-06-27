@@ -144,19 +144,45 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     });
 
     on<UpdateProjectRequested>((event, emit) async {
-      await _handleAction(
-        emit,
-        () => projectRepository.updateProject(event.project),
-        'Đã cập nhật dự án thành công!',
-      );
+      final currentState = state;
+      try {
+        await projectRepository.updateProject(event.project);
+        emit(const ProjectActionSuccess('Đã cập nhật dự án thành công!'));
+        if (currentState is ProjectLoaded) {
+          emit(
+            ProjectLoaded(
+              currentState.projects
+                  .map(
+                    (project) => project.projectId == event.project.projectId
+                        ? event.project
+                        : project,
+                  )
+                  .toList(),
+            ),
+          );
+        }
+      } catch (e) {
+        emit(ProjectError(e.toString().replaceAll('Exception: ', '')));
+      }
     });
 
     on<DeleteProjectRequested>((event, emit) async {
-      await _handleAction(
-        emit,
-        () => projectRepository.deleteProject(event.projectId),
-        'Đã xóa dự án thành công!',
-      );
+      final currentState = state;
+      try {
+        await projectRepository.deleteProject(event.projectId);
+        emit(const ProjectActionSuccess('Đã xóa dự án thành công!'));
+        if (currentState is ProjectLoaded) {
+          emit(
+            ProjectLoaded(
+              currentState.projects
+                  .where((project) => project.projectId != event.projectId)
+                  .toList(),
+            ),
+          );
+        }
+      } catch (e) {
+        emit(ProjectError(e.toString().replaceAll('Exception: ', '')));
+      }
     });
 
     on<UpdateMemberRoleRequested>((event, emit) async {
