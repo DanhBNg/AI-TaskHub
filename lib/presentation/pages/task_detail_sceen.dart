@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../core/utils/project_role_utils.dart';
 import '../../../domain/entities/task_entity.dart';
 import '../../../domain/entities/message_entity.dart';
 import '../../presentation/state/ai_assistant_bloc.dart';
@@ -573,9 +574,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               final String currentUid =
                   FirebaseAuth.instance.currentUser?.uid ?? '';
 
-              // Kiểm tra quyền (Owner hoặc Admin)
-              final bool hasPermission =
-                  (currentUid == ownerId) || (roles[currentUid] == 'Admin');
+              // Owner hoặc Trưởng nhóm được sửa/xóa task.
+              final bool hasPermission = ProjectRoleUtils.canManageTasks(
+                userId: currentUid,
+                ownerId: ownerId,
+                roles: roles,
+              );
 
               if (!hasPermission) {
                 return Container(
@@ -589,7 +593,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     ),
                   ),
                   child: const Text(
-                    '🔒 Chỉ Chủ dự án và Quản trị viên mới có quyền Sửa hoặc Xóa công việc này.',
+                    'Chỉ Chủ dự án và Trưởng nhóm mới có quyền sửa hoặc xóa công việc này.',
                     style: TextStyle(
                       color: AppColors.danger,
                       fontStyle: FontStyle.italic,

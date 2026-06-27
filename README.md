@@ -1,46 +1,151 @@
-# TaskHub AI 🚀
+# TaskHub AI
 
-TaskHub AI là một ứng dụng quản lý dự án công nghệ đa nền tảng (Mobile & Web), được thiết kế để tối ưu hóa hiệu suất làm việc nhóm thông qua bảng Kanban trực quan và sự hỗ trợ của AI.
+TaskHub AI là ứng dụng quản lý dự án công nghệ được phát triển bằng Flutter, hỗ trợ làm việc nhóm thông qua bảng Kanban, thảo luận theo từng công việc và trợ lý AI tích hợp. Ứng dụng hướng đến việc gom các thao tác quản lý dự án, trao đổi công việc, lưu trữ tài liệu và phân tích bằng AI vào cùng một không gian làm việc.
 
-🔗 **Live Demo:** [https://ai-project-manager-12d8d.web.app/]
+Live demo: https://ai-project-manager-12d8d.web.app/
 
-##  Tính năng nổi bật
+## Tính Năng Chính
 
-### 🧠 Tích hợp AI (Google Gemini)
-* **AI Task Generator:** Tự động phân tích yêu cầu (prompt) và chia nhỏ thành các thẻ công việc (Task) chi tiết.
-* **Smart Chat Summarize:** Tóm tắt nhanh tin nhắn thảo luận trong Task chỉ với 1 click, giúp nắm bắt ngữ cảnh tức thì.
+### Quản Lý Dự Án
 
-### 📊 Quản lý công việc (Kanban Board)
-* Giao diện Kanban trực quan với 4 cột trạng thái chuẩn Agile: `Cần làm`, `Đang làm`, `Chờ duyệt`, `Hoàn thành`.
-* Tính năng Kéo - Thả (Drag & Drop) mượt mà tích hợp thuật toán tự động cuộn (Auto-scroll) khi thẻ chạm mép màn hình.
-* Quản lý chi tiết công việc: Deadline, Độ ưu tiên, và Phân công người thực hiện.
+- Tạo, cập nhật và xóa dự án.
+- Mời thành viên tham gia dự án bằng email.
+- Phân quyền thành viên theo vai trò `Owner`, `Leader`, `Member`.
+- Theo dõi danh sách dự án mà người dùng đang sở hữu hoặc tham gia.
 
-### 👥 Thảo luận & Cộng tác (Real-time)
-* Khung chat thời gian thực (Real-time) ngay bên trong từng Task.
-* Hỗ trợ gửi tin nhắn văn bản và hình ảnh.
-* Đính kèm, xem trước và tải xuống các tệp tài liệu (PDF, Word, Excel...) an toàn qua Firebase Storage.
+### Bảng Kanban
 
-### 🛡️ Phân quyền bảo mật (RBAC)
-* Hệ thống phân quyền chặt chẽ với 3 cấp độ: Chủ dự án (Owner), Quản trị viên (Admin), và Thành viên (Member).
+- Quản lý công việc theo các trạng thái Kanban: `todo`, `in_progress`, `review`, `done`.
+- Hỗ trợ kéo thả task giữa các cột để cập nhật trạng thái.
+- Mỗi cột có màu nền nhẹ giúp dễ phân biệt trạng thái công việc.
+- Tạo, sửa, xóa task và cập nhật thông tin như tiêu đề, mô tả, độ ưu tiên, hạn chót, người được giao.
 
-## 🛠️ Công nghệ sử dụng
+### Chi Tiết Task Và Cộng Tác
 
-**Frontend (Client):**
-* Framework: [Flutter](https://flutter.dev/) (Hỗ trợ Android, iOS & Web)
-* Ngôn ngữ: Dart
-* State Management: BLoC Pattern (flutter_bloc)
+- Xem đầy đủ thông tin chi tiết của từng công việc.
+- Thảo luận theo từng task bằng tin nhắn thời gian thực.
+- Gửi tin nhắn văn bản và hình ảnh.
+- Tải lên, tải xuống và xóa tệp đính kèm qua Firebase Storage.
+- Tóm tắt nội dung trao đổi trong task bằng AI.
 
-**Backend (API Server):**
-* Runtime: [Node.js](https://nodejs.org/)
-* Framework: Express.js
-* AI Integration: Google Gemini API (genai-sdk)
+### Trợ Lý AI
 
-**Database & Dịch vụ đám mây:**
-* Cơ sở dữ liệu: Firebase Firestore (NoSQL)
-* Lưu trữ tệp: Firebase Storage
-* Xác thực: Firebase Authentication
-* Hosting (Frontend): Firebase Hosting
-* Hosting (Backend): Render.com
+- Trò chuyện với trợ lý AI dựa trên ngữ cảnh dự án và danh sách task hiện có.
+- Tóm tắt dữ liệu dự án/task.
+- Tìm kiếm task theo tiêu chí như trạng thái, độ ưu tiên, hạn chót hoặc người được giao.
+- Sắp xếp các task quan trọng cần ưu tiên xử lý.
+- Sinh danh sách task mới bằng AI và cho phép người dùng chọn các task muốn tạo.
+- Menu công cụ AI cố định cạnh thanh nhập để truy cập nhanh các hành động thường dùng.
 
-👨‍💻 Tác giả
-Nguyễn Bảo Danh - [https://github.com/DanhBNg]
+### Xác Thực Và Lưu Phiên
+
+- Đăng ký, đăng nhập bằng Firebase Authentication.
+- Lưu phiên đăng nhập để người dùng không phải đăng nhập lại sau khi mở lại ứng dụng.
+- Quản lý hồ sơ cá nhân gồm họ tên và ảnh đại diện.
+
+## Công Nghệ Sử Dụng
+
+### Ứng Dụng Người Dùng
+
+- Flutter
+- Dart
+- BLoC / flutter_bloc
+- Firebase Authentication
+- Cloud Firestore
+- Firebase Storage
+- Firebase Hosting cho bản Web
+
+### Backend AI Liên Quan
+
+Ứng dụng Flutter gọi backend Node.js/Express để xử lý các chức năng AI. Backend chịu trách nhiệm bảo vệ API key, xây dựng prompt, gọi Gemini API và chuẩn hóa dữ liệu trước khi trả về ứng dụng.
+
+Repo backend AI: https://github.com/DanhBNg/taskhub-backend
+
+### Web Admin Liên Quan
+
+Hệ thống có thêm giao diện Web Admin dùng để theo dõi dữ liệu tổng quan và hỗ trợ quản trị ở mức hệ thống.
+
+Repo Web Admin: https://github.com/DanhBNg/taskhub-admin
+
+## Cấu Hình Backend AI
+
+Ứng dụng đọc URL backend AI từ biến build-time `AI_BACKEND_URL`.
+
+Chạy local với backend mặc định:
+
+```bash
+flutter run -d chrome
+```
+
+Chạy local và trỏ đến backend cụ thể:
+
+```bash
+flutter run -d chrome --dart-define=AI_BACKEND_URL=http://localhost:3000
+```
+
+Build Web với backend deploy:
+
+```bash
+flutter build web --release --dart-define=AI_BACKEND_URL=https://your-backend-url.onrender.com
+```
+
+## Chạy Dự Án
+
+Cài dependencies:
+
+```bash
+flutter pub get
+```
+
+Chạy bản Web:
+
+```bash
+flutter run -d chrome
+```
+
+Chạy kiểm tra static analysis:
+
+```bash
+flutter analyze
+```
+
+Build bản Web:
+
+```bash
+flutter build web --release
+```
+
+Deploy Firebase Hosting:
+
+```bash
+firebase deploy --only hosting
+```
+
+## Cấu Trúc Chính
+
+```text
+lib/
+  core/
+    config/
+  data/
+    datasources/
+    models/
+    repositories/
+  domain/
+    entities/
+    repositories/
+  presentation/
+    pages/
+    state/
+    theme/
+    widgets/
+```
+
+Ứng dụng được tổ chức theo hướng tách biệt tầng giao diện, tầng xử lý trạng thái/nghiệp vụ và tầng dữ liệu. Các luồng chính trong giao diện được điều phối qua BLoC, repository và data source để giảm việc gọi trực tiếp Firebase hoặc backend từ UI.
+
+
+## Tác Giả
+
+Nguyễn Bảo Danh
+
+GitHub: https://github.com/DanhBNg

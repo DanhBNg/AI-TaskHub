@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskhub_ai/presentation/pages/task_detail_sceen.dart';
 
+import '../../core/utils/project_role_utils.dart';
 import '../../domain/entities/project_entity.dart';
 import '../../domain/entities/task_entity.dart';
 import '../state/ai_assistant_bloc.dart';
@@ -33,6 +35,11 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
   Timer? _autoScrollTimer;
   final double _scrollZoneWidth = 60.0;
   final double _scrollSpeed = 8.0;
+
+  bool get _usesTouchDrag {
+    return defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+  }
 
   @override
   void initState() {
@@ -96,11 +103,11 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
                         itemCount: memberIds.length,
                         itemBuilder: (context, index) {
                           final uid = memberIds[index];
-                          final roleName = uid == ownerId
-                              ? 'Chủ dự án'
-                              : (roles[uid] == 'Admin'
-                                    ? 'Quản trị viên'
-                                    : 'Thành viên');
+                          final roleName = ProjectRoleUtils.displayName(
+                            userId: uid,
+                            ownerId: ownerId,
+                            roles: roles,
+                          );
 
                           return FutureBuilder<DocumentSnapshot>(
                             future: FirebaseFirestore.instance
@@ -150,12 +157,12 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
                                         },
                                         itemBuilder: (context) => const [
                                           PopupMenuItem(
-                                            value: 'Admin',
-                                            child: Text('Gán quyền Admin'),
+                                            value: 'leader',
+                                            child: Text('Gán làm Trưởng nhóm'),
                                           ),
                                           PopupMenuItem(
-                                            value: 'Member',
-                                            child: Text('Gán quyền Member'),
+                                            value: 'member',
+                                            child: Text('Gán làm Thành viên'),
                                           ),
                                           PopupMenuDivider(),
                                           PopupMenuItem(
@@ -362,7 +369,108 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
     return await resultFuture;
   }
 
-  void _showAIGeneratorModal() {
+  List<Widget> _buildAppBarActions() {
+    return [
+      IconButton(
+        icon: const Icon(Icons.auto_awesome, color: Colors.purple),
+        tooltip: 'Tạo Task bằng AI',
+        onPressed: () => _showAIGeneratorModal(),
+      ),
+      StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('PROJECTS')
+            .doc(widget.projectId)
+            .snapshots(),
+        builder: (context, snapshot) {
+          final data = snapshot.data?.data() as Map<String, dynamic>?;
+          final ownerId = data?['ownerId']?.toString() ?? '';
+          final roles = Map<String, dynamic>.from(data?['roles'] ?? const {});
+          final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+          final isOwner = ProjectRoleUtils.isOwner(
+            userId: currentUid,
+            ownerId: ownerId,
+            roles: roles,
+          );
+
+          if (!isOwner) return const SizedBox.shrink();
+
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.person_add_alt_1),
+                tooltip: 'Thêm thành viên',
+                onPressed: () => _showAddMemberDialog(context),
+              ),
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'members') _showMembersManagementModal();
+                  if (value == 'edit') _showEditProjectModal(context);
+                  if (value == 'delete') _deleteProject(context);
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: 'members',
+                    child: ListTile(
+                      leading: Icon(Icons.people, color: Colors.blue),
+                      title: Text('Thành viên'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'edit',
+                    child: ListTile(
+                      leading: Icon(Icons.edit, color: Colors.orange),
+                      title: Text('Sửa dự án'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: ListTile(
+                      leading: Icon(Icons.delete, color: Colors.red),
+                      title: Text(
+                        'Xóa dự án',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    ];
+  }
+
+  Future<void> _showAIGeneratorModal() async {
+    final projectSnap = await FirebaseFirestore.instance
+        .collection('PROJECTS')
+        .doc(widget.projectId)
+        .get();
+    final data = projectSnap.data() ?? <String, dynamic>{};
+    final ownerId = data['ownerId']?.toString() ?? '';
+    final roles = Map<String, dynamic>.from(data['roles'] ?? const {});
+    final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final hasPermission = ProjectRoleUtils.canManageTasks(
+      userId: currentUid,
+      ownerId: ownerId,
+      roles: roles,
+    );
+
+    if (!mounted) return;
+    if (!hasPermission) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Chỉ Chủ dự án và Trưởng nhóm mới được tạo Task mới!'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
     final promptController = TextEditingController();
 
     showDialog(
@@ -513,54 +621,7 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.projectName),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.auto_awesome, color: Colors.purple),
-              tooltip: 'Tạo Task bằng AI',
-              onPressed: () => _showAIGeneratorModal(),
-            ),
-            IconButton(
-              icon: const Icon(Icons.person_add_alt_1),
-              tooltip: 'Thêm thành viên',
-              onPressed: () => _showAddMemberDialog(context),
-            ),
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'members') _showMembersManagementModal();
-                if (value == 'edit') _showEditProjectModal(context);
-                if (value == 'delete') _deleteProject(context);
-              },
-              itemBuilder: (context) => const [
-                PopupMenuItem(
-                  value: 'members',
-                  child: ListTile(
-                    leading: Icon(Icons.people, color: Colors.blue),
-                    title: Text('Thành viên'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'edit',
-                  child: ListTile(
-                    leading: Icon(Icons.edit, color: Colors.orange),
-                    title: Text('Sửa dự án'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'delete',
-                  child: ListTile(
-                    leading: Icon(Icons.delete, color: Colors.red),
-                    title: Text(
-                      'Xóa dự án',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ],
-            ),
-          ],
+          actions: _buildAppBarActions(),
         ),
         body: BlocBuilder<TaskBloc, TaskState>(
           builder: (context, state) {
@@ -619,8 +680,11 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
             final roles = Map<String, dynamic>.from(data['roles'] ?? const {});
             final currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
-            final hasPermission =
-                (currentUid == ownerId) || (roles[currentUid] == 'Admin');
+            final hasPermission = ProjectRoleUtils.canManageTasks(
+              userId: currentUid,
+              ownerId: ownerId,
+              roles: roles,
+            );
 
             if (!context.mounted) return;
 
@@ -628,7 +692,7 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text(
-                    '🔒 Chỉ Chủ dự án và Quản trị viên mới được tạo Task mới!',
+                    'Chỉ Chủ dự án và Trưởng nhóm mới được tạo Task mới!',
                   ),
                   backgroundColor: Colors.redAccent,
                 ),
@@ -833,53 +897,7 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
                           final task = columnTasks[index];
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 10),
-                            child: Draggable<TaskEntity>(
-                              data: task,
-                              onDragUpdate: (details) =>
-                                  _checkAutoScroll(details.globalPosition),
-                              onDragEnd: (details) => _stopAutoScroll(),
-                              onDraggableCanceled: (velocity, offset) =>
-                                  _stopAutoScroll(),
-                              feedback: Material(
-                                elevation: 8,
-                                color: Colors.transparent,
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.md,
-                                ),
-                                child: SizedBox(
-                                  width: 286,
-                                  child: _TaskCard(
-                                    task: task,
-                                    accentColor: accentColor,
-                                  ),
-                                ),
-                              ),
-                              childWhenDragging: Opacity(
-                                opacity: 0.35,
-                                child: _TaskCard(
-                                  task: task,
-                                  accentColor: accentColor,
-                                ),
-                              ),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(
-                                  AppRadii.md,
-                                ),
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          TaskDetailScreen(task: task),
-                                    ),
-                                  );
-                                },
-                                child: _TaskCard(
-                                  task: task,
-                                  accentColor: accentColor,
-                                ),
-                              ),
-                            ),
+                            child: _buildTaskDraggable(task, accentColor),
                           );
                         },
                       ),
@@ -888,6 +906,57 @@ class _KanbanBoardScreenState extends State<KanbanBoardScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildTaskDraggable(TaskEntity task, Color accentColor) {
+    final card = InkWell(
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => TaskDetailScreen(task: task)),
+        );
+      },
+      child: _TaskCard(task: task, accentColor: accentColor),
+    );
+
+    final feedback = Material(
+      elevation: 8,
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: SizedBox(
+        width: 286,
+        child: _TaskCard(task: task, accentColor: accentColor),
+      ),
+    );
+
+    final childWhenDragging = Opacity(
+      opacity: 0.35,
+      child: _TaskCard(task: task, accentColor: accentColor),
+    );
+
+    if (_usesTouchDrag) {
+      return LongPressDraggable<TaskEntity>(
+        delay: const Duration(milliseconds: 250),
+        data: task,
+        feedback: feedback,
+        childWhenDragging: childWhenDragging,
+        onDragUpdate: (details) => _checkAutoScroll(details.globalPosition),
+        onDragEnd: (details) => _stopAutoScroll(),
+        onDraggableCanceled: (velocity, offset) => _stopAutoScroll(),
+        child: card,
+      );
+    }
+
+    return Draggable<TaskEntity>(
+      data: task,
+      feedback: feedback,
+      childWhenDragging: childWhenDragging,
+      onDragUpdate: (details) => _checkAutoScroll(details.globalPosition),
+      onDragEnd: (details) => _stopAutoScroll(),
+      onDraggableCanceled: (velocity, offset) => _stopAutoScroll(),
+      child: card,
     );
   }
 }
