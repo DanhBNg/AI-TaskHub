@@ -149,7 +149,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   String _actionLabel(String action) {
     switch (action) {
       case 'CREATE_TASK':
-        return 'Tạo công việc mới';
+        return 'Chia nhỏ công việc';
       case 'SUMMARIZE':
         return 'Tóm tắt nội dung';
       case 'FIND_TASK':
@@ -164,6 +164,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
   void _handleAction(
     String action, {
     bool ignoreConversationHistory = false,
+    bool requireTaskPrompt = false,
   }) async {
     switch (action) {
       case 'SUMMARIZE':
@@ -187,12 +188,26 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
         }
 
         if (action == 'CREATE_TASK') {
+          String? taskPrompt;
+          if (requireTaskPrompt) {
+            taskPrompt = await _showCreateTaskPromptDialog();
+            if (!mounted || taskPrompt == null || taskPrompt.trim().isEmpty) {
+              return;
+            }
+          }
+
           final selectedProjectId = await _resolveTargetProjectId(finalContext);
           if (!mounted || selectedProjectId == null || selectedProjectId.isEmpty) {
             return;
           }
           targetProjectId = selectedProjectId;
           targetContext = _contextForProject(finalContext, selectedProjectId);
+          if (taskPrompt != null && taskPrompt.trim().isNotEmpty) {
+            targetContext = {
+              ...targetContext,
+              'user_create_task_prompt': taskPrompt.trim(),
+            };
+          }
         }
 
         context.read<AiAssistantBloc>().add(
@@ -207,6 +222,44 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       default:
         _sendMessage('Hãy thực hiện hành động: $action');
     }
+  }
+
+  Future<String?> _showCreateTaskPromptDialog() async {
+    final promptController = TextEditingController();
+
+    final prompt = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Bạn muốn tạo task cho yêu cầu nào?'),
+        content: TextField(
+          controller: promptController,
+          autofocus: true,
+          minLines: 3,
+          maxLines: 5,
+          decoration: const InputDecoration(
+            hintText:
+                'Ví dụ: Xây dựng chức năng tìm kiếm task theo tên, trạng thái và người được giao...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(null),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.of(dialogContext).pop(promptController.text);
+            },
+            icon: const Icon(Icons.add_task_outlined),
+            label: const Text('Tạo gợi ý'),
+          ),
+        ],
+      ),
+    );
+
+    promptController.dispose();
+    return prompt;
   }
 
   Future<String?> _showFindTaskCriteriaDialog() async {
@@ -567,7 +620,12 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                             const SizedBox(height: 24),
                             _QuickStartChips(
                               enabled: !isLoading,
-                              onActionPressed: _handleAction,
+                              onActionPressed: (action) => _handleAction(
+                                action,
+                                ignoreConversationHistory:
+                                    action == 'CREATE_TASK',
+                                requireTaskPrompt: action == 'CREATE_TASK',
+                              ),
                               onPromptPressed: _sendMessage,
                             ),
                             if (isLoading) ...[
@@ -614,6 +672,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                   onActionSelected: (action) => _handleAction(
                     action,
                     ignoreConversationHistory: true,
+                    requireTaskPrompt: action == 'CREATE_TASK',
                   ),
                   onSend: () => _sendMessage(),
                 );
@@ -657,7 +716,7 @@ class _QuickStartChips extends StatelessWidget {
       ),
       (
         icon: Icons.add_task_outlined,
-        label: 'Gợi ý task mới',
+        label: 'Chia nhỏ công việc',
         onPressed: () => onActionPressed('CREATE_TASK'),
       ),
       (
@@ -919,7 +978,7 @@ class _ActionMenuButton extends StatelessWidget {
       (
         value: 'CREATE_TASK',
         icon: Icons.add_task_outlined,
-        label: 'Tạo công việc mới',
+        label: 'Chia nhỏ công việc',
       ),
       (
         value: 'FIND_TASK',
